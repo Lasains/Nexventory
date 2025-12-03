@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kelola Produk - Nexventory</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-box"></i> Nexventory</h2>
+            <p class="user-name">{{ current_user.username }}</p>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('user.dashboard') }}" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a href="{{ url_for('user.manage_produk') }}" class="nav-item active">
+                <i class="fas fa-boxes"></i> Kelola Produk
+            </a>
+            <a href="{{ url_for('user.manage_jualan') }}" class="nav-item">
+                <i class="fas fa-shopping-cart"></i> Kelola Pembelian
+            </a>
+            <a href="{{ url_for('user.tambah_jualan') }}" class="nav-item">
+                <i class="fas fa-plus-circle"></i> Tambah Pembelian
+            </a>
+            <a href="{{ url_for('user.transaction') }}" class="nav-item">
+                <i class="fas fa-receipt"></i> Riwayat Transaksi
+            </a>
+            <a href="{{ url_for('user.manage_akun') }}" class="nav-item">
+                <i class="fas fa-user-cog"></i> Kelola Akun
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <header class="top-header">
+            <h1>Kelola Produk</h1>
+            <div class="header-actions">
+                <button class="btn-primary" onclick="showAddProductModal()">
+                    <i class="fas fa-plus"></i> Tambah Produk
+                </button>
+            </div>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <i class="fas fa-{{ 'info-circle' if category == 'info' else 'exclamation-triangle' if category == 'error' else 'check-circle' }}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Search and Filter -->
+        <div class="search-filter">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Cari produk..." onkeyup="filterProducts()">
+            </div>
+            <div class="filter-box">
+                <select id="categoryFilter" onchange="filterProducts()">
+                    <option value="">Semua Kategori</option>
+                    <option value="elektronik">Elektronik</option>
+                    <option value="pakaian">Pakaian</option>
+                    <option value="makanan">Makanan</option>
+                    <option value="minuman">Minuman</option>
+                    <option value="lainnya">Lainnya</option>
+                </select>
+            </div>
+            <div class="filter-box">
+                <select id="stockFilter" onchange="filterProducts()">
+                    <option value="">Semua Stok</option>
+                    <option value="low">Stok Menipis</option>
+                    <option value="out">Habis</option>
+                    <option value="available">Tersedia</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Products Table -->
+        <div class="table-container">
+            <table class="products-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nama Produk</th>
+                        <th>Kategori</th>
+                        <th>Stok</th>
+                        <th>Stok Minimum</th>
+                        <th>Harga</th>
+                        <th>Status</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="productsTableBody">
+                    {% if products %}
+                        {% for product in products %}
+                        <tr class="product-row" data-category="{{ product.category }}" data-stock="{{ product.stock }}" data-min-stock="{{ product.min_stock }}">
+                            <td>{{ product.id }}</td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    {% if product.image %}
+                                        <img src="{{ url_for('static', filename='uploads/' + product.image) }}" alt="{{ product.name }}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
+                                    {% else %}
+                                        <div style="width: 40px; height: 40px; background: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #999;">No Img</div>
+                                    {% endif %}
+                                    {{ product.name }}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="category-badge">{{ product.category }}</span>
+                            </td>
+                            <td>
+                                <span class="stock-count {% if product.stock <= product.min_stock %}low-stock{% endif %}">
+                                    {{ product.stock }}
+                                </span>
+                            </td>
+                            <td>{{ product.min_stock }}</td>
+                            <td>Rp {{ "%.2f"|format(product.price) }}</td>
+                            <td>
+                                {% if product.stock == 0 %}
+                                    <span class="status-badge out-of-stock">Habis</span>
+                                {% elif product.stock <= product.min_stock %}
+                                    <span class="status-badge low-stock">Menipis</span>
+                                {% else %}
+                                    <span class="status-badge in-stock">Tersedia</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn-edit" data-id="{{ product.id }}" onclick="editProduct(this.dataset.id)" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn-delete" data-id="{{ product.id }}" onclick="deleteProduct(this.dataset.id)" title="Hapus">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="no-data">
+                                <i class="fas fa-box-open"></i>
+                                <p>Belum ada produk</p>
+                                <button class="btn-primary" onclick="showAddProductModal()">
+                                    <i class="fas fa-plus"></i> Tambah Produk Pertama
+                                </button>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+            <button class="page-btn" disabled>
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <span class="page-info">Menampilkan 1-10 dari {{ products|length }} produk</span>
+            <button class="page-btn" disabled>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Add/Edit Product Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Tambah Produk</h3>
+                <button class="close-btn" onclick="closeProductModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="productForm" method="POST" action="{{ url_for('user.add_product') }}" enctype="multipart/form-data">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="productName">Nama Produk *</label>
+                        <input type="text" id="productName" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="productCategory">Kategori *</label>
+                        <select id="productCategory" name="category" required>
+                            <option value="">Pilih Kategori</option>
+                            <option value="elektronik">Elektronik</option>
+                            <option value="pakaian">Pakaian</option>
+                            <option value="makanan">Makanan</option>
+                            <option value="minuman">Minuman</option>
+                            <option value="lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="productStock">Stok *</label>
+                        <input type="number" id="productStock" name="stock" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="productMinStock">Stok Minimum *</label>
+                        <input type="number" id="productMinStock" name="min_stock" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="productPrice">Harga *</label>
+                        <input type="number" id="productPrice" name="price" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="productImage">Gambar Produk</label>
+                        <input type="file" id="productImage" name="image" accept="image/*">
+                        <small class="form-hint">Format: JPG, PNG, GIF. Maksimal 2MB</small>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeProductModal()">Batal</button>
+                    <button type="submit" class="btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        /* Form styling for image upload */
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .form-group input[type="file"] {
+            border: 2px dashed #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f7fafc;
+        }
+        
+        .form-group input[type="file"]:hover {
+            border-color: #667eea;
+            background: #edf2f7;
+        }
+        
+        .form-hint {
+            display: block;
+            margin-top: 5px;
+            font-size: 12px;
+            color: #718096;
+            line-height: 1.4;
+        }
+        
+        .current-image {
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        .current-image img {
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 2px;
+        }
+        
+        /* Product image in table */
+        .product-row img {
+            transition: transform 0.2s ease;
+        }
+        
+        .product-row img:hover {
+            transform: scale(1.1);
+        }
+    </style>
+
+    <script>
+        // Filter products
+        function filterProducts() {
+            const searchValue = document.getElementById('searchInput').value.toLowerCase();
+            const categoryValue = document.getElementById('categoryFilter').value;
+            const stockValue = document.getElementById('stockFilter').value;
+            const rows = document.querySelectorAll('.product-row');
+
+            rows.forEach(row => {
+                const name = row.cells[1].textContent.toLowerCase();
+                const category = row.dataset.category;
+                const stock = parseInt(row.dataset.stock);
+                const minStock = parseInt(row.dataset.min_stock);
+
+                let showRow = true;
+
+                // Search filter
+                if (searchValue && !name.includes(searchValue)) {
+                    showRow = false;
+                }
+
+                // Category filter
+                if (categoryValue && category !== categoryValue) {
+                    showRow = false;
+                }
+
+                // Stock filter
+                if (stockValue) {
+                    if (stockValue === 'low' && stock > minStock) showRow = false;
+                    if (stockValue === 'out' && stock > 0) showRow = false;
+                    if (stockValue === 'available' && stock === 0) showRow = false;
+                }
+
+                row.style.display = showRow ? '' : 'none';
+            });
+        }
+
+        // Modal functions
+        function showAddProductModal() {
+            document.getElementById('modalTitle').textContent = 'Tambah Produk';
+            document.getElementById('productForm').reset();
+            document.getElementById('productModal').style.display = 'block';
+        }
+
+        function closeProductModal() {
+            document.getElementById('productModal').style.display = 'none';
+        }
+
+        function editProduct(id) {
+            window.location.href = `/user/manage_produk/edit/${id}`;
+        }
+
+        function deleteProduct(id) {
+            if (confirm('Apakah Anda yakin ingin menghapus produk ini?')) {
+                // Create form for DELETE request
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/user/manage_produk/delete/${id}`;
+                
+                // Add CSRF token if exists
+                const csrfToken = document.querySelector('meta[name="csrf-token"]');
+                if (csrfToken) {
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrf_token';
+                    csrfInput.value = csrfToken.getAttribute('content');
+                    form.appendChild(csrfInput);
+                }
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('productModal');
+            if (event.target === modal) {
+                closeProductModal();
+            }
+        }
+    </script>
+</body>
+</html>

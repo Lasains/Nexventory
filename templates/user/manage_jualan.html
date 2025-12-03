@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kelola Pembelian - Nexventory</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/manage_jualan.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-box"></i> Nexventory</h2>
+            <p class="user-name">{{ current_user.username }}</p>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('user.dashboard') }}" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a href="{{ url_for('user.manage_produk') }}" class="nav-item">
+                <i class="fas fa-boxes"></i> Kelola Produk
+            </a>
+            <a href="{{ url_for('user.manage_jualan') }}" class="nav-item active">
+                <i class="fas fa-shopping-cart"></i> Kelola Pembelian
+            </a>
+            <a href="{{ url_for('user.tambah_jualan') }}" class="nav-item">
+                <i class="fas fa-plus-circle"></i> Tambah Pembelian
+            </a>
+            <a href="{{ url_for('user.transaction') }}" class="nav-item">
+                <i class="fas fa-receipt"></i> Riwayat Transaksi
+            </a>
+            <a href="{{ url_for('user.manage_akun') }}" class="nav-item">
+                <i class="fas fa-user-cog"></i> Kelola Akun
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <header class="top-header">
+            <h1>Kelola Pembelian</h1>
+            <div class="header-actions">
+                <a href="{{ url_for('user.tambah_jualan') }}" class="btn-primary">
+                    <i class="fas fa-plus"></i> Tambah Pembelian
+                </a>
+            </div>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <i class="fas fa-{{ 'info-circle' if category == 'info' else 'exclamation-triangle' if category == 'error' else 'check-circle' }}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Sales Summary Cards -->
+        <div class="summary-cards">
+            <div class="card">
+                <div class="card-icon">
+                    <i class="fas fa-boxes"></i>
+                </div>
+                <div class="card-content">
+                    <h3>{{ products|length }}</h3>
+                    <p>Total Produk</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <div class="card-content">
+                    <h3>{{ products|sum(attribute='total_sold') if products else 0 }}</h3>
+                    <p>Total Terjual</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-icon">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <div class="card-content">
+                    <h3>Rp {{ "%.0f"|format(products|sum(attribute='total_revenue') if products else 0) }}</h3>
+                    <p>Total Pendapatan</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="card-content">
+                    <h3>{{ products|selectattr('today_sold', 'greaterthan', 0)|list|length }}</h3>
+                    <p>Produk Terjual Hari Ini</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="search-filter">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Cari produk..." onkeyup="filterProducts()">
+            </div>
+            <div class="filter-box">
+                <select id="categoryFilter" onchange="filterProducts()">
+                    <option value="">Semua Kategori</option>
+                    <option value="elektronik">Elektronik</option>
+                    <option value="fashion">Fashion</option>
+                    <option value="makanan">Makanan</option>
+                    <option value="minuman">Minuman</option>
+                    <option value="kesehatan">Kesehatan</option>
+                    <option value="olahraga">Olahraga</option>
+                    <option value="lainnya">Lainnya</option>
+                </select>
+            </div>
+            <div class="filter-box">
+                <select id="sortFilter" onchange="sortProducts()">
+                    <option value="name">Urutkan Nama</option>
+                    <option value="sold">Terlaris</option>
+                    <option value="revenue">Pendapatan Tertinggi</option>
+                    <option value="stock">Stok Terendah</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Products Sales Grid -->
+        <div class="products-sales-container">
+            <div class="products-sales-grid" id="productsGrid">
+                {% if products %}
+                    {% for product in products %}
+                    <div class="product-sales-card" data-name="{{ product.name }}" data-category="{{ product.category }}" data-sold="{{ product.total_sold }}" data-revenue="{{ product.total_revenue }}" data-stock="{{ product.stock }}">
+                        <div class="product-header">
+                            <div class="product-image">
+                                {% if product.image %}
+                                    <img src="{{ url_for('static', filename='uploads/' + product.image) }}" alt="{{ product.name }}">
+                                {% else %}
+                                    <img src="https://via.placeholder.com/100x100/667eea/ffffff?text={{ product.name[:3] }}" alt="{{ product.name }}">
+                                {% endif %}
+                            </div>
+                            <div class="product-info">
+                                <h3 class="product-name">{{ product.name }}</h3>
+                                <p class="product-category">{{ product.category|title }}</p>
+                                <p class="product-price">Rp {{ "%.0f"|format(product.price) }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="sales-stats">
+                            <div class="stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-shopping-cart"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <h4>{{ product.total_sold or 0 }}</h4>
+                                    <p>Total Terjual</p>
+                                </div>
+                            </div>
+                            
+                            <div class="stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-dollar-sign"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <h4>Rp {{ "%.0f"|format(product.total_revenue or 0) }}</h4>
+                                    <p>Total Pendapatan</p>
+                                </div>
+                            </div>
+                            
+                            <div class="stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-box"></i>
+                                </div>
+                                <div class="stat-content">
+                                    <h4>{{ product.stock }}</h4>
+                                    <p>Sisa Stok</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="product-footer">
+                            <div class="stock-status">
+                                {% if product.stock <= product.min_stock %}
+                                    <span class="status-badge low-stock">Stok Menipis</span>
+                                {% elif product.stock == 0 %}
+                                    <span class="status-badge out-of-stock">Habis</span>
+                                {% else %}
+                                    <span class="status-badge available">Tersedia</span>
+                                {% endif %}
+                            </div>
+                            <div class="action-buttons">
+                                <button class="btn-view" onclick="viewProductDetail('{{ product.id }}')" title="Lihat Detail">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn-edit" onclick="editProduct('{{ product.id }}')" title="Edit Produk">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-products">
+                        <i class="fas fa-box-open"></i>
+                        <h3>Belum Ada Produk</h3>
+                        <p>Belum ada produk yang tersedia untuk dikelola</p>
+                        <a href="{{ url_for('user.manage_produk') }}" class="btn-primary">
+                            <i class="fas fa-plus"></i> Tambah Produk
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+            <button class="page-btn" disabled>
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <span class="page-info">Menampilkan 1-10 dari {{ transactions|length }} transaksi</span>
+            <button class="page-btn" disabled>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Sale Detail Modal -->
+    <div id="saleDetailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Detail Transaksi</h3>
+                <button class="close-btn" onclick="closeSaleDetailModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="saleDetailContent">
+                    <!-- Content will be loaded dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeSaleDetailModal()">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Filter products function
+        function filterProducts() {
+            const searchValue = document.getElementById('searchInput').value.toLowerCase();
+            const categoryValue = document.getElementById('categoryFilter').value;
+            const productCards = document.querySelectorAll('.product-sales-card');
+
+            productCards.forEach(card => {
+                const name = card.dataset.name.toLowerCase();
+                const category = card.dataset.category;
+                
+                const matchesSearch = name.includes(searchValue);
+                const matchesCategory = !categoryValue || category === categoryValue;
+                
+                card.style.display = matchesSearch && matchesCategory ? 'block' : 'none';
+            });
+        }
+
+        // Sort products function
+        function sortProducts() {
+            const sortValue = document.getElementById('sortFilter').value;
+            const productsGrid = document.getElementById('productsGrid');
+            const productCards = Array.from(productsGrid.querySelectorAll('.product-sales-card'));
+            
+            productCards.sort((a, b) => {
+                switch(sortValue) {
+                    case 'name':
+                        return a.dataset.name.localeCompare(b.dataset.name);
+                    case 'sold':
+                        return parseInt(b.dataset.sold) - parseInt(a.dataset.sold);
+                    case 'revenue':
+                        return parseFloat(b.dataset.revenue) - parseFloat(a.dataset.revenue);
+                    case 'stock':
+                        return parseInt(a.dataset.stock) - parseInt(b.dataset.stock);
+                    default:
+                        return 0;
+                }
+            });
+            
+            productCards.forEach(card => productsGrid.appendChild(card));
+        }
+
+        // View product detail
+        function viewProductDetail(productId) {
+            // Could open modal with detailed sales history
+            alert(`Detail produk #${productId} - Fitur akan segera tersedia`);
+        }
+
+        // Edit product
+        function editProduct(productId) {
+            window.location.href = `/user/manage_produk?edit=${productId}`;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-apply filters on page load
+            filterProducts();
+        });
+
+        // Legacy functions for compatibility
+        function viewSale(saleId) {
+            console.log('View sale:', saleId);
+        }
+
+        function returnSale(saleId) {
+            console.log('Return sale:', saleId);
+        }
+
+        function closeSaleDetailModal() {
+            console.log('Close modal');
+        }
+    </script>
+
+    
+</body>
+</html>

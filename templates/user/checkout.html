@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Nexventory</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/checkout.css') }}">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-box"></i> Nexventory</h2>
+            <p class="user-name">{{ current_user.username }}</p>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('user.dashboard') }}" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a href="{{ url_for('user.manage_produk') }}" class="nav-item">
+                <i class="fas fa-boxes"></i> Kelola Produk
+            </a>
+            <a href="{{ url_for('user.manage_jualan') }}" class="nav-item">
+                <i class="fas fa-shopping-cart"></i> Kelola Pembelian
+            </a>
+            <a href="{{ url_for('user.tambah_jualan') }}" class="nav-item">
+                <i class="fas fa-plus-circle"></i> Tambah Pembelian
+            </a>
+            <a href="{{ url_for('user.transaction') }}" class="nav-item">
+                <i class="fas fa-receipt"></i> Riwayat Transaksi
+            </a>
+            <a href="{{ url_for('user.manage_akun') }}" class="nav-item">
+                <i class="fas fa-user-cog"></i> Kelola Akun
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <header class="top-header">
+            <h1>Checkout</h1>
+            <div class="header-info">
+                <span>Selesaikan pembayaran pesanan Anda</span>
+            </div>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <i class="fas fa-{{ 'info-circle' if category == 'info' else 'exclamation-triangle' if category == 'error' else 'check-circle' }}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="checkout-container">
+            <!-- Pending Orders Section -->
+            <div class="pending-orders-section">
+                <h2><i class="fas fa-clock"></i> Pesanan Belum Dibayar</h2>
+                {% if pending_orders %}
+                    <div class="pending-orders-list">
+                        {% for order in pending_orders %}
+                        <div class="pending-order-card">
+                            <div class="order-header">
+                                <div class="order-info">
+                                    <h4>Order #{{ order.order_number }}</h4>
+                                    <p class="order-date">{{ order.created_at.strftime('%d %B %Y, %H:%M') }}</p>
+                                </div>
+                                <div class="order-status">
+                                    <span class="status-badge pending">Menunggu Pembayaran</span>
+                                </div>
+                            </div>
+                            
+                            <div class="order-items-preview">
+                                {% for item in order.items[:2] %}
+                                <div class="mini-item">
+                                    <img src="{{ url_for('static', filename='uploads/' + item.product.image if item.product.image else 'images/product-placeholder.jpg') }}" 
+                                         alt="{{ item.product.name }}">
+                                    <span>{{ item.quantity }}x</span>
+                                </div>
+                                {% endfor %}
+                                {% if order.items|length > 2 %}
+                                <div class="more-items">
+                                    +{{ order.items|length - 2 }} lagi
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="order-footer">
+                                <div class="order-total">
+                                    <span>Total: </span>
+                                    <strong>Rp {{ "%.0f"|format(order.total_amount) }}</strong>
+                                </div>
+                                <div class="order-actions">
+                                    {% if order.payment_method == 'qris' %}
+                                    <button class="btn-primary" onclick="continueQRISPayment('{{ order.id }}')">
+                                        <i class="fas fa-qrcode"></i> Bayar QRIS
+                                    </button>
+                                    {% elif order.payment_method == 'transfer' %}
+                                    <button class="btn-secondary" onclick="showTransferDetails('{{ order.id }}')">
+                                        <i class="fas fa-info-circle"></i> Detail Transfer
+                                    </button>
+                                    {% endif %}
+                                    <button class="btn-outline" onclick="cancelOrder('{{ order.id }}')">
+                                        <i class="fas fa-times"></i> Batal
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="no-pending-orders">
+                        <i class="fas fa-check-circle"></i>
+                        <p>Tidak ada pesanan yang menunggu pembayaran</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Order Summary -->
+            <div class="order-summary">
+                <h2><i class="fas fa-shopping-cart"></i> Ringkasan Pesanan</h2>
+                <div class="cart-items" id="cartItems">
+                    {% if order_items %}
+                        {% for item in order_items %}
+                        <div class="cart-item">
+                            <div class="item-image">
+                                <img src="{{ url_for('static', filename='images/products/' + item.product.image if item.product.image else 'images/product-placeholder.jpg') }}" 
+                                     alt="{{ item.product.name }}">
+                            </div>
+                            <div class="item-details">
+                                <h4>{{ item.product.name }}</h4>
+                                <p class="seller-name">
+                                    <i class="fas fa-store"></i> {{ item.product.seller_name }}
+                                </p>
+                                <div class="item-meta">
+                                    <span class="quantity">{{ item.quantity }}x</span>
+                                    <span class="price">Rp {{ "%.0f"|format(item.price) }}</span>
+                                </div>
+                            </div>
+                            <div class="item-total">
+                                <span>Rp {{ "%.0f"|format(item.price * item.quantity) }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                
+                <div class="order-totals">
+                    <div class="total-row">
+                        <span>Subtotal:</span>
+                        <span>Rp {{ "%.0f"|format(subtotal) }}</span>
+                    </div>
+                    <div class="total-row">
+                        <span>Biaya Layanan:</span>
+                        <span>Rp {{ "%.0f"|format(service_fee) }}</span>
+                    </div>
+                    <div class="total-row grand-total">
+                        <span>Total:</span>
+                        <span>Rp {{ "%.0f"|format(total_amount) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Section -->
+            <div class="payment-section">
+                <h2><i class="fas fa-credit-card"></i> Metode Pembayaran</h2>
+                
+                <!-- Delivered Orders Section -->
+            <div class="delivered-orders-section">
+                <h2><i class="fas fa-truck"></i> Pesanan Belum Diterima</h2>
+                {% if shipped_orders %}
+                    <div class="shipped-orders-list">
+                        {% for order in shipped_orders %}
+                        <div class="shipped-order-card">
+                            <div class="order-header">
+                                <div class="order-info">
+                                    <h4>Order #{{ order.order_number }}</h4>
+                                    <p class="order-date">{{ order.created_at.strftime('%d %B %Y, %H:%M') }}</p>
+                                </div>
+                                <div class="order-status">
+                                    {% if order.shipping_status == 'shipped' %}
+                                    <span class="status-badge shipped">
+                                        <i class="fas fa-truck"></i> Dalam Pengiriman
+                                    </span>
+                                    {% elif order.shipping_status == 'delivered' %}
+                                    <span class="status-badge delivered">
+                                        <i class="fas fa-check-circle"></i> Siap Diambil
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="shipping-info">
+                                <div class="shipping-address">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <span>{{ order.shipping_address or 'Alamat belum diatur' }}</span>
+                                </div>
+                                {% if order.tracking_number %}
+                                <div class="tracking-info">
+                                    <i class="fas fa-shipping-fast"></i>
+                                    <span>No. Resi: {{ order.tracking_number }}</span>
+                                    <button class="btn-link" onclick="trackOrder('{{ order.tracking_number }}')">
+                                        Lacak
+                                    </button>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="order-items-preview">
+                                {% for item in order.items[:2] %}
+                                <div class="mini-item">
+                                    <img src="{{ url_for('static', filename='uploads/' + item.product.image if item.product.image else 'images/product-placeholder.jpg') }}" 
+                                         alt="{{ item.product.name }}">
+                                    <span>{{ item.quantity }}x</span>
+                                </div>
+                                {% endfor %}
+                                {% if order.items|length > 2 %}
+                                <div class="more-items">
+                                    +{{ order.items|length - 2 }} lagi
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="order-footer">
+                                <div class="order-total">
+                                    <span>Total: </span>
+                                    <strong>Rp {{ "%.0f"|format(order.total_amount) }}</strong>
+                                </div>
+                                <div class="order-actions">
+                                    {% if order.shipping_status == 'delivered' %}
+                                    <button class="btn-primary" onclick="confirmDelivery('{{ order.id }}')">
+                                        <i class="fas fa-check"></i> Konfirmasi Diterima
+                                    </button>
+                                    {% endif %}
+                                    <button class="btn-secondary" onclick="viewOrderDetail('{{ order.id }}')">
+                                        <i class="fas fa-eye"></i> Detail
+                                    </button>
+                                    {% if order.shipping_status == 'shipped' %}
+                                    <button class="btn-outline" onclick="contactSupport('{{ order.id }}')">
+                                        <i class="fas fa-headset"></i> Bantuan
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="no-shipped-orders">
+                        <i class="fas fa-box-open"></i>
+                        <p>Tidak ada pesanan dalam pengiriman</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Payment Methods -->
+                <div class="payment-methods">
+                    <div class="payment-method active" data-method="qris">
+                        <div class="method-header">
+                            <div class="method-info">
+                                <div class="method-icon qris">
+                                    <i class="fas fa-qrcode"></i>
+                                </div>
+                                <div class="method-details">
+                                    <h3>QRIS</h3>
+                                    <p>Bayar dengan GoPay, OVO, Dana, atau e-wallet lainnya</p>
+                                </div>
+                            </div>
+                            <div class="method-radio">
+                                <input type="radio" name="payment_method" value="qris" checked>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="payment-method" data-method="transfer">
+                        <div class="method-header">
+                            <div class="method-info">
+                                <div class="method-icon transfer">
+                                    <i class="fas fa-university"></i>
+                                </div>
+                                <div class="method-details">
+                                    <h3>Transfer Bank</h3>
+                                    <p>Transfer ke rekening bank</p>
+                                </div>
+                            </div>
+                            <div class="method-radio">
+                                <input type="radio" name="payment_method" value="transfer">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="payment-method" data-method="cod">
+                        <div class="method-header">
+                            <div class="method-info">
+                                <div class="method-icon cod">
+                                    <i class="fas fa-hand-holding-usd"></i>
+                                </div>
+                                <div class="method-details">
+                                    <h3>Cash on Delivery</h3>
+                                    <p>Bayar saat barang sampai</p>
+                                </div>
+                            </div>
+                            <div class="method-radio">
+                                <input type="radio" name="payment_method" value="cod">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QRIS Payment -->
+                <div class="qris-payment" id="qrisPayment" style="display: none;">
+                    <div class="qris-header">
+                        <h3><i class="fas fa-qrcode"></i> Scan QRIS</h3>
+                        <p>Scan kode QR dengan aplikasi GoPay atau e-wallet lainnya</p>
+                    </div>
+                    
+                    <div class="qris-content">
+                        <div class="qrcode-container">
+                            <div class="qrcode" id="qrcode">
+                                <div class="qrcode-loading">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <p>Membuat QR Code...</p>
+                                </div>
+                                <div id="qrcodeCanvas"></div>
+                            </div>
+                            <div class="qrcode-info">
+                                <p class="amount" id="qrisAmount">Rp 0</p>
+                                <p class="merchant">Nexventory Store</p>
+                                <p class="expiry" id="qrisExpiry">Berlaku 10 menit</p>
+                                <div class="payment-status" id="paymentStatus">
+                                    <span class="status-pending">Menunggu Pembayaran</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="payment-steps">
+                            <h4>Cara Pembayaran:</h4>
+                            <ol>
+                                <li>Buka aplikasi GoPay atau e-wallet lainnya</li>
+                                <li>Pilih menu "Scan QR" atau "Bayar"</li>
+                                <li>Scan kode QR di atas</li>
+                                <li>Konfirmasi pembayaran</li>
+                                <li>Masukkan PIN jika diperlukan</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="supported-wallets">
+                            <h4>E-Wallet Didukung:</h4>
+                            <div class="wallet-list">
+                                <div class="wallet-item">
+                                    <i class="fas fa-check-circle text-success"></i>
+                                    <span>GoPay</span>
+                                </div>
+                                <div class="wallet-item">
+                                    <i class="fas fa-check-circle text-success"></i>
+                                    <span>OVO</span>
+                                </div>
+                                <div class="wallet-item">
+                                    <i class="fas fa-check-circle text-success"></i>
+                                    <span>Dana</span>
+                                </div>
+                                <div class="wallet-item">
+                                    <i class="fas fa-check-circle text-success"></i>
+                                    <span>ShopeePay</span>
+                                </div>
+                                <div class="wallet-item">
+                                    <i class="fas fa-check-circle text-success"></i>
+                                    <span>LinkAja</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bank Transfer Payment -->
+                <div class="transfer-payment" id="transferPayment" style="display: none;">
+                    <div class="bank-details">
+                        <h4>Detail Transfer Bank:</h4>
+                        <div class="bank-info">
+                            <div class="bank-item">
+                                <label>Bank:</label>
+                                <span>BCA</span>
+                            </div>
+                            <div class="bank-item">
+                                <label>No. Rekening:</label>
+                                <span>1234567890</span>
+                            </div>
+                            <div class="bank-item">
+                                <label>Atas Nama:</label>
+                                <span>Nexventory Store</span>
+                            </div>
+                            <div class="bank-item">
+                                <label>Jumlah:</label>
+                                <span class="amount">Rp {{ "%.0f"|format(total_amount) }}</span>
+                            </div>
+                        </div>
+                        <div class="transfer-instructions">
+                            <p>Silakan transfer ke rekening di atas dan upload bukti transfer</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COD Payment -->
+                <div class="cod-payment" id="codPayment" style="display: none;">
+                    <div class="cod-info">
+                        <h4>Cash on Delivery</h4>
+                        <p>Bayar tunai saat barang sampai ke lokasi Anda</p>
+                        <div class="cod-features">
+                            <div class="feature-item">
+                                <i class="fas fa-check text-success"></i>
+                                <span>Pembayaran aman saat barang diterima</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-check text-success"></i>
+                                <span>Tidak perlu transfer di muka</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-check text-success"></i>
+                                <span>Bisa cek barang sebelum bayar</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customer Information -->
+                <div class="customer-info">
+                    <h3><i class="fas fa-user"></i> Informasi Pembeli</h3>
+                    <form id="checkoutForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="customer_name">Nama Lengkap *</label>
+                                <input type="text" id="customer_name" name="customer_name" value="{{ current_user.first_name or '' }} {{ current_user.last_name or '' }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="customer_phone">No. HP *</label>
+                                <input type="tel" id="customer_phone" name="customer_phone" placeholder="08xxxxxxxxxx" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="customer_address">Alamat Pengiriman *</label>
+                            <textarea id="customer_address" name="customer_address" rows="3" placeholder="Masukkan alamat lengkap pengiriman" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="customer_notes">Catatan (Opsional)</label>
+                            <textarea id="customer_notes" name="customer_notes" rows="2" placeholder="Catatan khusus untuk pesanan Anda"></textarea>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Checkout Actions -->
+                <div class="checkout-actions">
+                    <a href="{{ url_for('user.browse_products') }}" class="btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Kembali Belanja
+                    </a>
+                    <button class="btn-primary" onclick="processPayment()" id="payButton">
+                        <i class="fas fa-credit-card"></i> Bayar Sekarang
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Success Modal -->
+    <div id="paymentSuccessModal" class="modal">
+        <div class="modal-content success">
+            <div class="modal-header">
+                <h3><i class="fas fa-check-circle"></i> Pembayaran Berhasil</h3>
+            </div>
+            <div class="modal-body">
+                <div class="success-content">
+                    <div class="success-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h4>Terima kasih! Pembayaran Anda telah berhasil.</h4>
+                    <p>Pesanan Anda sedang diproses dan akan segera dikirim.</p>
+                    <div class="order-info">
+                        <p><strong>No. Pesanan:</strong> #<span id="orderNumber">12345</span></p>
+                        <p><strong>Total Pembayaran:</strong> Rp {{ "%.0f"|format(total_amount) }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="{{ url_for('user.my_orders') }}" class="btn-primary">
+                    <i class="fas fa-list"></i> Lihat Pesanan Saya
+                </a>
+                <button class="btn-secondary" onclick="continueShopping()">
+                    <i class="fas fa-shopping-basket"></i> Belanja Lagi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let paymentTimer;
+        let countdownSeconds = 600; // 10 minutes
+
+        // Payment method selection
+        document.addEventListener('DOMContentLoaded', function() {
+            const paymentMethods = document.querySelectorAll('.payment-method');
+            
+            paymentMethods.forEach(method => {
+                method.addEventListener('click', function() {
+                    // Remove active class from all methods
+                    paymentMethods.forEach(m => m.classList.remove('active'));
+                    
+                    // Add active class to selected method
+                    this.classList.add('active');
+                    
+                    // Show corresponding payment section
+                    const selectedMethod = this.dataset.method;
+                    document.querySelectorAll('.qris-payment, .transfer-payment, .cod-payment').forEach(section => {
+                        section.style.display = 'none';
+                    });
+                    
+                    if (selectedMethod === 'qris') {
+                        document.getElementById('qrisPayment').style.display = 'block';
+                        startPaymentTimer();
+                    } else if (selectedMethod === 'transfer') {
+                        document.getElementById('transferPayment').style.display = 'block';
+                        stopPaymentTimer();
+                    } else if (selectedMethod === 'cod') {
+                        document.getElementById('codPayment').style.display = 'block';
+                        stopPaymentTimer();
+                    }
+                });
+            });
+        });
+
+        // Payment timer for QRIS
+        function startPaymentTimer() {
+            stopPaymentTimer();
+            countdownSeconds = 600;
+            
+            paymentTimer = setInterval(() => {
+                countdownSeconds--;
+                updateTimerDisplay();
+                
+                if (countdownSeconds <= 0) {
+                    stopPaymentTimer();
+                    showPaymentExpired();
+                }
+            }, 1000);
+        }
+
+        function stopPaymentTimer() {
+            if (paymentTimer) {
+                clearInterval(paymentTimer);
+                paymentTimer = null;
+            }
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(countdownSeconds / 60);
+            const seconds = countdownSeconds % 60;
+            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            const expiryElement = document.querySelector('.expiry');
+            if (expiryElement) {
+                expiryElement.textContent = `Berlaku ${timeString}`;
+            }
+        }
+
+        function showPaymentExpired() {
+            alert('Kode QR telah kadaluarsar. Silakan generate ulang.');
+            // Generate new QR code
+            generateNewQR();
+        }
+
+        function generateNewQR() {
+            // Get amount from total amount display
+            const totalAmountElement = document.querySelector('.grand-total span:last-child');
+            const amount = parseFloat(totalAmountElement.textContent.replace(/[^0-9]/g, ''));
+            
+            if (!amount || amount <= 0) {
+                alert('Invalid amount');
+                return;
+            }
+            
+            // Show loading
+            document.querySelector('.qrcode-loading').style.display = 'block';
+            document.getElementById('qrcodeCanvas').style.display = 'none';
+            
+            fetch('/user/api/qris/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    amount: amount
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Use the QR code image from API
+                    const qrcodeCanvas = document.getElementById('qrcodeCanvas');
+                    qrcodeCanvas.innerHTML = ''; // Clear previous QR
+                    
+                    // Create image element with the QR code from API
+                    const qrImage = document.createElement('img');
+                    qrImage.src = data.data.qrcode_url;
+                    qrImage.alt = 'QR Code';
+                    qrImage.style.width = '200px';
+                    qrImage.style.height = '200px';
+                    qrImage.style.border = '1px solid #ddd';
+                    qrImage.style.borderRadius = '8px';
+                    
+                    qrcodeCanvas.appendChild(qrImage);
+                    
+                    // Hide loading and show QR
+                    document.querySelector('.qrcode-loading').style.display = 'none';
+                    qrcodeCanvas.style.display = 'block';
+                    
+                    // Update amount display
+                    document.getElementById('qrisAmount').textContent = `Rp ${amount.toLocaleString('id-ID')}`;
+                    
+                    // Store transaction ID for status checking
+                    window.currentTransactionId = data.data.transaction_id;
+                    
+                    // Start payment status checking
+                    startPaymentStatusCheck(data.data.transaction_id);
+                    
+                    // Start timer
+                    startPaymentTimer();
+                } else {
+                    alert('Gagal generate QR code: ' + (data.error || 'Silakan coba lagi.'));
+                }
+            })
+            .catch(error => {
+                console.error('Error generating QR:', error);
+                alert('Terjadi kesalahan. Silakan coba lagi.');
+            });
+        }
+
+        // Payment status checking
+        let statusCheckInterval;
+        
+        function startPaymentStatusCheck(transactionId) {
+            statusCheckInterval = setInterval(() => {
+                fetch(`/user/api/qris/check-status/${transactionId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.paid) {
+                            stopPaymentTimer();
+                            clearInterval(statusCheckInterval);
+                            showPaymentSuccess();
+                        } else if (data.status === 'expired') {
+                            stopPaymentTimer();
+                            clearInterval(statusCheckInterval);
+                            showPaymentExpired();
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking payment status:', error);
+                });
+            }, 3000); // Check every 3 seconds
+        }
+
+        function showPaymentSuccess() {
+            const statusElement = document.getElementById('paymentStatus');
+            statusElement.innerHTML = '<span class="status-success"><i class="fas fa-check-circle"></i> Pembayaran Berhasil!</span>';
+            
+            // Show success modal
+            setTimeout(() => {
+                showSuccessModal();
+            }, 1000);
+        }
+
+        // Process payment
+        function processPayment() {
+            const form = document.getElementById('checkoutForm');
+            const customerName = document.getElementById('customer_name').value;
+            const customerPhone = document.getElementById('customer_phone').value;
+            const customerAddress = document.getElementById('customer_address').value;
+            
+            // Validation
+            if (!customerName || !customerPhone || !customerAddress) {
+                alert('Silakan lengkapi semua field yang wajib diisi');
+                return;
+            }
+            
+            const selectedMethod = document.querySelector('input[name="payment_method"]:checked').value;
+            const payButton = document.getElementById('payButton');
+            
+            // Show loading state
+            payButton.disabled = true;
+            payButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+            
+            if (selectedMethod === 'qris') {
+                // Show QRIS payment section and generate QR
+                document.getElementById('qrisPayment').style.display = 'block';
+                generateNewQR();
+                payButton.disabled = false;
+                payButton.innerHTML = '<i class="fas fa-qrcode"></i> Generate QR';
+            } else if (selectedMethod === 'transfer') {
+                // Handle bank transfer
+                handleBankTransfer();
+            } else if (selectedMethod === 'cod') {
+                // Handle COD
+                handleCOD();
+            }
+        }
+
+        function handleBankTransfer() {
+            // Submit form for bank transfer
+            const form = document.getElementById('checkoutForm');
+            form.submit();
+        }
+
+        function handleCOD() {
+            // Submit form for COD
+            const form = document.getElementById('checkoutForm');
+            form.submit();
+        }
+
+        function continueQRISPayment(orderId) {
+            // Continue QRIS payment for existing order
+            document.getElementById('qrisPayment').style.display = 'block';
+            generateNewQR();
+            
+            // Scroll to QRIS section
+            document.getElementById('qrisPayment').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showTransferDetails(orderId) {
+            // Show bank transfer details modal
+            alert('Detail transfer akan segera tersedia');
+        }
+
+        function cancelOrder(orderId) {
+            if (confirm('Apakah Anda yakin ingin membatalkan pesanan ini?')) {
+                // Cancel order logic here
+                alert('Pesanan dibatalkan');
+                location.reload();
+            }
+        }
+
+        function confirmDelivery(orderId) {
+            if (confirm('Apakah Anda yakin telah menerima barang ini?')) {
+                // Confirm delivery logic here
+                alert('Terima kasih! Pesanan telah dikonfirmasi.');
+                location.reload();
+            }
+        }
+
+        function trackOrder(trackingNumber) {
+            // Open tracking URL
+            window.open(`https://www.jne.co.id/id/tracking/trace?awbnum=${trackingNumber}`, '_blank');
+        }
+
+        function viewOrderDetail(orderId) {
+            // Show order detail modal
+            alert('Detail pesanan akan segera tersedia');
+        }
+
+        function contactSupport(orderId) {
+            // Contact support for order issues
+            alert('Hubungi layanan pelanggan untuk bantuan pesanan Anda');
+        }
+
+        function resetPayButton() {
+            const payButton = document.getElementById('payButton');
+            payButton.disabled = false;
+            payButton.innerHTML = '<i class="fas fa-credit-card"></i> Bayar Sekarang';
+        }
+
+        function showSuccessModal() {
+            const modal = document.getElementById('successModal');
+            if (modal) {
+                modal.style.display = 'block';
+            }
+        }
+
+        // Pending Orders Functions
+        function continueQRISPayment(orderId) {
+            // Load existing order and show QRIS payment
+            fetch(`/user/api/order/${orderId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show QRIS payment section with existing order data
+                    document.getElementById('qrisPayment').style.display = 'block';
+                    document.getElementById('qrisAmount').textContent = `Rp ${data.order.total_amount.toLocaleString('id-ID')}`;
+                    generateNewQR();
+                    
+                    // Scroll to QRIS section
+                    document.getElementById('qrisPayment').scrollIntoView({ behavior: 'smooth' });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading order:', error);
+                alert('Gagal memuat pesanan. Silakan coba lagi.');
+            });
+        }
+
+        function showTransferDetails(orderId) {
+            // Show transfer details modal
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-university"></i> Detail Transfer</h3>
+                        <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="transfer-details">
+                            <h4>Rekening Tujuan:</h4>
+                            <div class="bank-info">
+                                <p><strong>Bank:</strong> BCA</p>
+                                <p><strong>No. Rekening:</strong> 1234567890</p>
+                                <p><strong>Atas Nama:</strong> PT Nexventory Indonesia</p>
+                            </div>
+                            <div class="amount-info">
+                                <p><strong>Jumlah:</strong> Rp 0</p>
+                                <p><strong>Kode Unik:</strong> 123</p>
+                            </div>
+                            <div class="instructions">
+                                <h4>Petunjuk Transfer:</h4>
+                                <ol>
+                                    <li>Login ke aplikasi banking Anda</li>
+                                    <li>Pilih menu transfer</li>
+                                    <li>Masukkan nomor rekening tujuan</li>
+                                    <li>Masukkan jumlah sesuai total (termasuk kode unik)</li>
+                                    <li>Konfirmasi transfer</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-secondary" onclick="this.closest('.modal').remove()">Tutup</button>
+                        <button class="btn-primary" onclick="uploadProof('${orderId}')">Upload Bukti</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.style.display = 'block';
+        }
+
+        function cancelOrder(orderId) {
+            if (confirm('Apakah Anda yakin ingin membatalkan pesanan ini?')) {
+                fetch(`/user/api/order/${orderId}/cancel`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Pesanan berhasil dibatalkan');
+                        location.reload();
+                    } else {
+                        alert('Gagal membatalkan pesanan. Silakan coba lagi.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error cancelling order:', error);
+                    alert('Terjadi kesalahan. Silakan coba lagi.');
+                });
+            }
+        }
+
+        // Shipped Orders Functions
+        function confirmDelivery(orderId) {
+            if (confirm('Apakah Anda yakin telah menerima pesanan ini?')) {
+                fetch(`/user/api/order/${orderId}/confirm_delivery`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Terima kasih! Pesanan telah dikonfirmasi diterima.');
+                        location.reload();
+                    } else {
+                        alert('Gagal mengkonfirmasi penerimaan. Silakan coba lagi.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error confirming delivery:', error);
+                    alert('Terjadi kesalahan. Silakan coba lagi.');
+                });
+            }
+        }
+
+        function trackOrder(trackingNumber) {
+            // Open tracking in new window
+            window.open(`https://www.jne.co.id/id/tracking/trace/${trackingNumber}`, '_blank');
+        }
+
+        function viewOrderDetail(orderId) {
+            // Redirect to order detail page
+            window.location.href = `/user/order/${orderId}`;
+        }
+
+        function contactSupport(orderId) {
+            // Open support modal
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-headset"></i> Hubungi Bantuan</h3>
+                        <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="support-options">
+                            <h4>Order #${orderId}</h4>
+                            <p>Pilih cara menghubungi bantuan:</p>
+                            <div class="support-buttons">
+                                <button class="btn-primary" onclick="startWhatsApp('${orderId}')">
+                                    <i class="fas fa-whatsapp"></i> WhatsApp
+                                </button>
+                                <button class="btn-secondary" onclick="startEmail('${orderId}')">
+                                    <i class="fas fa-envelope"></i> Email
+                                </button>
+                                <button class="btn-outline" onclick="startCall('${orderId}')">
+                                    <i class="fas fa-phone"></i> Telepon
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.style.display = 'block';
+        }
+
+        function startWhatsApp(orderId) {
+            const message = `Halo, saya butuh bantuan untuk pesanan #${orderId}`;
+            window.open(`https://wa.me/628123456789?text=${encodeURIComponent(message)}`, '_blank');
+        }
+
+        function startEmail(orderId) {
+            const subject = `Bantuan Pesanan #${orderId}`;
+            const body = `Halo Tim Nexventory,\n\nSaya butuh bantuan untuk pesanan #${orderId}.\n\nTerima kasih.`;
+            window.location.href = `mailto:support@nexventory.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        }
+
+        function startCall(orderId) {
+            // Could integrate with click-to-call or show phone number
+            alert('Silakan hubungi: 0800-1234-5678\n\nReferensi: Pesanan #' + orderId);
+        }
+
+        function uploadProof(orderId) {
+            // Could implement file upload for transfer proof
+            alert('Fitur upload bukti transfer akan segera tersedia.\n\nUntuk sementara, silakan hubungi admin.');
+        }
+
+        function handleBankTransfer() {
+            // Show upload proof modal or redirect
+            alert('Silakan transfer ke rekening yang tertera dan upload bukti transfer.');
+            resetPayButton();
+        }
+
+        function handleCOD() {
+            // Direct success for COD
+            showPaymentSuccess();
+        }
+
+        function showPaymentSuccess() {
+            stopPaymentTimer();
+            
+            // Generate order number
+            const orderNumber = 'ORD' + Date.now();
+            document.getElementById('orderNumber').textContent = orderNumber;
+            
+            // Show success modal
+            document.getElementById('paymentSuccessModal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            
+            // Clear cart
+            localStorage.removeItem('cart');
+        }
+
+        function resetPayButton() {
+            const payButton = document.getElementById('payButton');
+            payButton.disabled = false;
+            payButton.innerHTML = '<i class="fas fa-credit-card"></i> Bayar Sekarang';
+        }
+
+        function continueShopping() {
+            window.location.href = '{{ url_for("user.browse_products") }}';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const successModal = document.getElementById('paymentSuccessModal');
+            if (event.target === successModal) {
+                successModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Initialize timer display
+        updateTimerDisplay();
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beli Produk - Nexventory</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tambah_jualan.css') }}">
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-box"></i> Nexventory</h2>
+            <p class="user-name">{{ current_user.username }}</p>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('user.dashboard') }}" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a href="{{ url_for('user.manage_produk') }}" class="nav-item">
+                <i class="fas fa-boxes"></i> Kelola Produk
+            </a>
+            <a href="{{ url_for('user.manage_jualan') }}" class="nav-item">
+                <i class="fas fa-shopping-cart"></i> Kelola Pembelian
+            </a>
+            <a href="{{ url_for('user.tambah_jualan') }}" class="nav-item active">
+                <i class="fas fa-plus-circle"></i> Tambah Pembelian
+            </a>
+            <a href="{{ url_for('user.transaction') }}" class="nav-item">
+                <i class="fas fa-receipt"></i> Riwayat Transaksi
+            </a>
+            <a href="{{ url_for('user.manage_akun') }}" class="nav-item">
+                <i class="fas fa-user-cog"></i> Kelola Akun
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <header class="top-header">
+            <h1>Beli Produk</h1>
+            <div class="header-info">
+                <span>Jelajahi produk dari berbagai penjual</span>
+            </div>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <i class="fas fa-{{ 'info-circle' if category == 'info' else 'exclamation-triangle' if category == 'error' else 'check-circle' }}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Search and Filter -->
+        <div class="shop-header">
+            <div class="search-bar">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Cari produk..." onkeyup="filterProducts()">
+                </div>
+                <div class="filter-dropdown">
+                    <select id="categoryFilter" onchange="filterProducts()">
+                        <option value="">Semua Kategori</option>
+                        <option value="elektronik">Elektronik</option>
+                        <option value="fashion">Fashion</option>
+                        <option value="makanan">Makanan</option>
+                        <option value="minuman">Minuman</option>
+                        <option value="kesehatan">Kesehatan</option>
+                        <option value="olahraga">Olahraga</option>
+                        <option value="lainnya">Lainnya</option>
+                    </select>
+                </div>
+                <div class="filter-dropdown">
+                    <select id="sortFilter" onchange="sortProducts()">
+                        <option value="name">Urutkan Nama</option>
+                        <option value="price-low">Harga Terendah</option>
+                        <option value="price-high">Harga Tertinggi</option>
+                        <option value="stock">Stok Terbanyak</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="cart-summary">
+                <a href="{{ url_for('user.checkout') }}" class="cart-btn">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count" id="cartCount">0</span>
+                    <span>Keranjang</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Products Grid -->
+        <div class="products-container">
+            <div class="products-grid" id="productsGrid">
+                {% for product in products %}
+                <div class="product-card" data-category="{{ product.category }}" data-price="{{ product.price }}" data-stock="{{ product.stock }}" data-name="{{ product.name }}">
+                    <div class="product-image">
+                        {% if product.image %}
+                            <img src="{{ url_for('static', filename='uploads/' + product.image) }}" alt="{{ product.name }}">
+                        {% else %}
+                            <img src="https://via.placeholder.com/300x200/667eea/ffffff?text={{ product.name[:10] }}" alt="{{ product.name }}">
+                        {% endif %}
+                        <div class="product-badge">
+                            {% if product.stock <= product.min_stock %}
+                                <span class="badge low-stock">Stok Menipis</span>
+                            {% elif product.stock == 0 %}
+                                <span class="badge out-of-stock">Habis</span>
+                            {% else %}
+                                <span class="badge available">Tersedia</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="product-info">
+                        <h3 class="product-name">{{ product.name }}</h3>
+                        <p class="product-category">{{ product.category|title }}</p>
+                        <p class="product-description">Produk berkualitas dari kategori {{ product.category|title }}</p>
+                        
+                        <div class="product-meta">
+                            <div class="price-info">
+                                <span class="current-price">Rp {{ "%.0f"|format(product.price) }}</span>
+                            </div>
+                            
+                            <div class="stock-info">
+                                <i class="fas fa-box"></i>
+                                <span>Stok: {{ product.stock }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="seller-info">
+                            <i class="fas fa-store"></i>
+                            <span>{{ product.seller_name or 'Toko Resmi' }}</span>
+                        </div>
+                        
+                        <div class="product-actions">
+                            <div class="quantity-selector">
+                                <button class="qty-btn" onclick="decreaseQty('{{ product.id }}')">-</button>
+                                <input type="number" id="qty-{{ product.id }}" class="qty-input" value="1" min="1" max="{{ product.stock }}" readonly>
+                                <button class="qty-btn" onclick="increaseQty('{{ product.id }}', '{{ product.stock }}')">+</button>
+                            </div>
+                            
+                            <button class="add-to-cart-btn" onclick="addToCart('{{ product.id }}')" {% if product.stock == 0 %}disabled{% endif %}>
+                                {% if product.stock == 0 %}
+                                    <i class="fas fa-times"></i> Habis
+                                {% else %}
+                                    <i class="fas fa-cart-plus"></i> Tambah
+                                {% endif %}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="no-products">
+                    <i class="fas fa-box-open"></i>
+                    <h3>Belum Ada Produk</h3>
+                    <p>Belum ada produk yang tersedia saat ini.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Loading More -->
+        <div class="load-more-container" id="loadMoreContainer" style="display: none;">
+            <button class="load-more-btn" onclick="loadMoreProducts()">
+                <i class="fas fa-spinner fa-spin"></i> Muat Lebih Banyak
+            </button>
+        </div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div id="cartModal" class="modal">
+        <div class="modal-content cart-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-shopping-cart"></i> Keranjang Belanja</h3>
+                <button class="close-btn" onclick="closeCartModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="cart-items" id="cartItems">
+                    <div class="empty-cart">
+                        <i class="fas fa-shopping-cart"></i>
+                        <p>Keranjang masih kosong</p>
+                    </div>
+                </div>
+                
+                <div class="cart-summary">
+                    <div class="summary-row">
+                        <span>Subtotal:</span>
+                        <span id="cartSubtotal">Rp 0</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Biaya Layanan (2%):</span>
+                        <span id="cartService">Rp 0</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>Total:</span>
+                        <span id="cartTotal">Rp 0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeCartModal()">Lanjut Belanja</button>
+                <button class="btn-primary" onclick="proceedToCheckout()" id="checkoutBtn" disabled>
+                    <i class="fas fa-credit-card"></i> Checkout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cart = [];
+        let products = [];
+        
+        // Parse products data safely
+        try {
+            products = JSON.parse('{{ products_data|tojson|safe }}');
+        } catch (e) {
+            console.error('Error parsing products data:', e);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCartFromStorage();
+            updateCartUI();
+        });
+
+        // Cart Management
+        function loadCartFromStorage() {
+            const savedCart = localStorage.getItem('userCart');
+            if (savedCart) {
+                cart = JSON.parse(savedCart);
+            }
+        }
+
+        function saveCartToStorage() {
+            localStorage.setItem('userCart', JSON.stringify(cart));
+        }
+
+        function updateCartUI() {
+            const cartCount = document.getElementById('cartCount');
+            const cartItems = document.getElementById('cartItems');
+            const cartSubtotal = document.getElementById('cartSubtotal');
+            const cartService = document.getElementById('cartService');
+            const cartTotal = document.getElementById('cartTotal');
+            const checkoutBtn = document.getElementById('checkoutBtn');
+            
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            cartCount.textContent = totalItems;
+            
+            if (cart.length === 0) {
+                cartItems.innerHTML = `
+                    <div class="empty-cart">
+                        <i class="fas fa-shopping-cart"></i>
+                        <p>Keranjang masih kosong</p>
+                    </div>
+                `;
+                checkoutBtn.disabled = true;
+            } else {
+                let cartHTML = '';
+                let subtotal = 0;
+                
+                cart.forEach(item => {
+                    const itemTotal = item.price * item.quantity;
+                    subtotal += itemTotal;
+                    
+                    cartHTML += `
+                        <div class="cart-item">
+                            <div class="item-info">
+                                <h4>${item.name}</h4>
+                                <p>Rp ${item.price.toLocaleString('id-ID')} x ${item.quantity}</p>
+                            </div>
+                            <div class="item-total">
+                                <span>Rp ${itemTotal.toLocaleString('id-ID')}</span>
+                                <button class="remove-btn" onclick="removeFromCart(${item.id})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                cartItems.innerHTML = cartHTML;
+                const serviceFee = subtotal * 0.02;
+                const total = subtotal + serviceFee;
+                
+                cartSubtotal.textContent = `Rp ${subtotal.toLocaleString('id-ID')}`;
+                cartService.textContent = `Rp ${serviceFee.toLocaleString('id-ID')}`;
+                cartTotal.textContent = `Rp ${total.toLocaleString('id-ID')}`;
+                checkoutBtn.disabled = false;
+            }
+        }
+
+        function addToCart(productId) {
+            const product = products.find(p => p.id == productId);
+            if (!product || product.stock === 0) return;
+            
+            const qtyInput = document.getElementById(`qty-${productId}`);
+            const quantity = parseInt(qtyInput.value) || 1;
+            
+            const existingItem = cart.find(item => item.id == productId);
+            
+            if (existingItem) {
+                const newQuantity = existingItem.quantity + quantity;
+                if (newQuantity <= product.stock) {
+                    existingItem.quantity = newQuantity;
+                } else {
+                    showNotification('Stok tidak mencukupi!', 'error');
+                    return;
+                }
+            } else {
+                cart.push({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    quantity: quantity,
+                    image: product.image || null,
+                    seller_name: product.seller_name || 'Toko Resmi'
+                });
+            }
+            
+            saveCartToStorage();
+            updateCartUI();
+            showNotification('Produk ditambahkan ke keranjang!', 'success');
+            
+            // Reset quantity
+            qtyInput.value = 1;
+        }
+
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.id != productId);
+            saveCartToStorage();
+            updateCartUI();
+        }
+
+        function increaseQty(productId, maxStock) {
+            const qtyInput = document.getElementById(`qty-${productId}`);
+            const currentQty = parseInt(qtyInput.value) || 1;
+            const maxStockInt = parseInt(maxStock);
+            if (currentQty < maxStockInt) {
+                qtyInput.value = currentQty + 1;
+            }
+        }
+
+        function decreaseQty(productId) {
+            const qtyInput = document.getElementById(`qty-${productId}`);
+            const currentQty = parseInt(qtyInput.value) || 1;
+            if (currentQty > 1) {
+                qtyInput.value = currentQty - 1;
+            }
+        }
+
+        // Modal Functions
+        function openCartModal() {
+            document.getElementById('cartModal').style.display = 'block';
+        }
+
+        function closeCartModal() {
+            document.getElementById('cartModal').style.display = 'none';
+        }
+
+        function proceedToCheckout() {
+            if (cart.length === 0) return;
+            
+            // Save cart to session for checkout
+            const cartData = encodeURIComponent(JSON.stringify(cart));
+            window.location.href = `/user/checkout?cart_data=${cartData}`;
+        }
+
+        // Filter and Search Functions
+        function filterProducts() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const productCards = document.querySelectorAll('.product-card');
+            
+            productCards.forEach(card => {
+                const name = card.dataset.name.toLowerCase();
+                const category = card.dataset.category;
+                
+                const matchesSearch = name.includes(searchTerm);
+                const matchesCategory = !categoryFilter || category === categoryFilter;
+                
+                card.style.display = matchesSearch && matchesCategory ? 'block' : 'none';
+            });
+        }
+
+        function sortProducts() {
+            const sortValue = document.getElementById('sortFilter').value;
+            const productsGrid = document.getElementById('productsGrid');
+            const productCards = Array.from(productsGrid.querySelectorAll('.product-card'));
+            
+            productCards.sort((a, b) => {
+                switch(sortValue) {
+                    case 'name':
+                        return a.dataset.name.localeCompare(b.dataset.name);
+                    case 'price-low':
+                        return parseFloat(a.dataset.price) - parseFloat(b.dataset.price);
+                    case 'price-high':
+                        return parseFloat(b.dataset.price) - parseFloat(a.dataset.price);
+                    case 'stock':
+                        return parseInt(b.dataset.stock) - parseInt(a.dataset.stock);
+                    default:
+                        return 0;
+                }
+            });
+            
+            productCards.forEach(card => productsGrid.appendChild(card));
+        }
+
+        // Notification
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `alert alert-${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+                ${message}
+            `;
+            
+            document.querySelector('.main-content').insertBefore(notification, document.querySelector('.shop-header'));
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('cartModal');
+            if (event.target === modal) {
+                closeCartModal();
+            }
+        }
+    </script>
+</body>
+</html>
