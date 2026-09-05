@@ -7,43 +7,61 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="login-container">
         <div class="login-form">
-            <h2>Login ke Nexventory</h2>
-            
+            <!-- Brand -->
+            <div class="brand">
+                <div class="brand-icon">
+                    <i class="fas fa-boxes"></i>
+                </div>
+                <h2>Selamat Datang</h2>
+                <p class="subtitle">Masuk ke akun Nexventory Anda</p>
+            </div>
+
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                        <div class="alert alert-{{ category }}">
+                            <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' }}"></i>
+                            {{ message }}
+                        </div>
                     {% endfor %}
                 {% endif %}
             {% endwith %}
-            
+
             <form method="POST" action="{{ url_for('auth.login') }}">
                 <div class="form-group">
-                    <label for="username">Username:</label>
-                    <input type="text" id="username" name="username" required>
+                    <label for="username">Username</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="username" name="username" placeholder="Masukkan username" required>
+                        <i class="fas fa-user input-icon"></i>
+                    </div>
                 </div>
-                
+
                 <div class="form-group">
-                    <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" required>
+                    <label for="password">Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="password" name="password" placeholder="Masukkan password" required>
+                        <i class="fas fa-lock input-icon"></i>
+                    </div>
                 </div>
-                
+
                 <button type="submit" class="btn-login">
-                    <i class="fas fa-sign-in-alt"></i> Login
+                    <i class="fas fa-sign-in-alt"></i>&nbsp; Masuk
                 </button>
             </form>
 
-            <!-- Social Login Divider -->
             <div class="social-login">
-                <span>Atau login dengan</span>
+                <span>Belum punya akun?</span>
             </div>
-            
+
             <p class="register-link">
-                Belum punya akun? <a href="{{ url_for('auth.register') }}">Daftar di sini</a>
+                <a href="{{ url_for('auth.register') }}">Daftar sekarang &rarr;</a>
             </p>
         </div>
     </div>

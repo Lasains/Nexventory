@@ -5,11 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nexventory - Inventory Management System</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/index.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
     
 </head>
 
@@ -18,7 +21,7 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
         <div class="container">
-            <a class="navbar-brand" href="#">Nexventory</a>
+            <a class="navbar-brand fw-bold" href="#">Nexventory</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -43,7 +46,7 @@
     </nav>
 
     <!-- Hero Section -->
-    <section id="home" class="hero-section text-center position-relative">
+    <section id="home" class="hero-section text-center">
         <!-- Bootstrap Carousel for Background -->
         <div id="heroCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel" data-bs-interval="3000">
             <div class="carousel-indicators">
@@ -75,13 +78,18 @@
             </button>
         </div>
         
+        <!-- Hero Overlay -->
+        <div class="hero-overlay"></div>
+
         <!-- Hero Content Overlay -->
-        <div class="hero-content position-relative z-1">
+        <div class="hero-content">
             <div class="container">
-                <h1 class="display-4 fw-bold mb-4 text-white">Welcome to Nexventory</h1>
+                <h1 class="display-4 fw-bold mb-3 text-white">Welcome to Nexventory</h1>
                 <p class="lead mb-4 text-white">Efficient Inventory Management System for Your Business</p>
-                <a href="/register" class="btn btn-light btn-lg me-2">Get Started</a>
-                <a href="#features" class="btn btn-outline-light btn-lg">Learn More</a>
+                <div class="hero-buttons">
+                    <a href="/register" class="btn btn-light btn-lg">Get Started</a>
+                    <a href="#features" class="btn btn-outline-light btn-lg">Learn More</a>
+                </div>
             </div>
         </div>
     </section>
