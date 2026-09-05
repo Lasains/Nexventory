@@ -40,8 +40,12 @@ def create_app(config_class=Config):
     from app.models.product import Product
     from app.models.transaction import Transaction
 
-    # Note: Database tables are now created via migrations
-    # Use 'flask db init', 'flask db migrate', 'flask db upgrade' commands
+    # Auto-create tables if missing
+    with app.app_context():
+        try:
+            db.create_all()
+        except Exception as e:
+            app.logger.warning(f"Could not auto-create tables: {e}")
 
     return app
 

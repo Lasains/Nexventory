@@ -10,10 +10,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import or_
 
 # Import database dan model
-from app.extensions import db
-# ASUMSI: oauth diinisialisasi di __init__.py atau extensions.py
-# Jika oauth ada di extensions.py, ubah menjadi: from app.extensions import oauth
-from app import oauth 
+from app.extensions import db, oauth
 from app.models.user import User
 
 auth_bp = Blueprint('auth', __name__)
@@ -58,23 +55,25 @@ def login():
             
             # Cek password menggunakan method di model User
             if not user or not user.check_password(password):
-                flash('Username/email atau password salah!', 'error')
+                flash('Username atau password salah', 'error')
                 return render_template('login.html', username=username), 401
             
-            # Login menggunakan Flask-Login
-            login_user(user)
+            # Cek status user (aktif/tidak)
+            if not user.is_active:
+                flash('Akun Anda dinonaktifkan. Silakan hubungi admin.', 'error')
+                return render_template('login.html', username=username), 403
             
-            # Update last login
-            user.last_login = datetime.utcnow()
-            db.session.commit()
+            # Login user menggunakan Flask-Login
+            login_user(user, remember=True)
             
-            # Set session data for compatibility
+            # Simpan data penting ke session (opsional)
             session['user_id'] = user.id
+            session['username'] = user.username
             session['role'] = user.role
             
-            flash('Login berhasil!', 'success')
+            flash(f'Selamat datang kembali, {user.first_name or user.username}!', 'success')
             
-            # Redirect user ke halaman yang diminta sebelumnya atau default
+            # Redirect berdasarkan role
             next_page = request.args.get('next')
             if not next_page or not next_page.startswith('/'):
                 if user.role == 'admin':
@@ -88,7 +87,7 @@ def login():
                 
         except Exception as e:
             current_app.logger.error(f'Login error: {str(e)}', exc_info=True)
-            flash(str(e), 'error')
+            flash(f'Gagal terhubung ke database: {str(e)}', 'error')
             return render_template('login.html', username=username), 500
     
     return render_template('login.html')
@@ -106,7 +105,7 @@ def register():
         
         errors = []
         
-        # Validasi Input
+        # Validasi format input dasar
         if not username: errors.append('Username wajib diisi')
         if not email: errors.append('Email wajib diisi')
         if not password: errors.append('Password wajib diisi')
@@ -115,16 +114,11 @@ def register():
         if username:
             if len(username) < 3:
                 errors.append('Username minimal 3 karakter')
-            if not re.match(r'^[a-zA-Z0-9_]+$', username):
+            elif not re.match(r'^[a-zA-Z0-9_]+$', username):
                 errors.append('Username hanya boleh huruf, angka, dan underscore')
-            if User.query.filter(User.username.ilike(username)).first():
-                errors.append('Username sudah digunakan')
         
-        if email:
-            if not validate_email(email):
-                errors.append('Format email tidak valid')
-            if User.query.filter(User.email.ilike(email)).first():
-                errors.append('Email sudah terdaftar')
+        if email and not validate_email(email):
+            errors.append('Format email tidak valid')
         
         if password:
             is_valid, pwd_error = validate_password(password)
@@ -140,6 +134,17 @@ def register():
                                  first_name=first_name, last_name=last_name), 400
         
         try:
+            # Cek duplikasi di database
+            if User.query.filter(User.username.ilike(username)).first():
+                flash('Username sudah digunakan', 'error')
+                return render_template('register.html', username=username, email=email,
+                                     first_name=first_name, last_name=last_name), 400
+
+            if User.query.filter(User.email.ilike(email)).first():
+                flash('Email sudah terdaftar', 'error')
+                return render_template('register.html', username=username, email=email,
+                                     first_name=first_name, last_name=last_name), 400
+
             # Buat object user dengan password
             new_user = User(
                 username=username,
@@ -159,8 +164,9 @@ def register():
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f'Error creating user: {str(e)}', exc_info=True)
-            flash(str(e), 'error')
-            return render_template('register.html', username=username, email=email), 500
+            flash(f'Gagal melakukan pendaftaran: {str(e)}', 'error')
+            return render_template('register.html', username=username, email=email,
+                                 first_name=first_name, last_name=last_name), 500
     
     return render_template('register.html')
 
