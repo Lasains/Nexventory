@@ -242,7 +242,3 @@ Kontribusi sangat terbuka:
 3. Commit perubahan (`git commit -m "Menambahkan fitur X"`)
 4. Push ke branch (`git push origin fitur/nama-fitur`)
 5. Buka Pull Request
-
-## Lisensi
-
-Repositori ini belum menyertakan file lisensi resmi. Tambahkan berkas `LICENSE` (misalnya MIT) sesuai kebutuhan sebelum digunakan secara publik atau komersial.
