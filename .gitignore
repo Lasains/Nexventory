@@ -27,3 +27,6 @@ instance/
 .vscode/
 *.swp
 *.swo
+
+.github/
+.agent/
