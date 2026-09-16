@@ -1,0 +1,29 @@
+# Environment variables
+.env
+.flaskenv.local
+
+# Python Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Flask instance & SQLite databases
+instance/
+*.db
+*.sqlite3
+*.sqlite
+
+# OS & Editor files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo

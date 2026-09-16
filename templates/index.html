@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexventory - Inventory Management System</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/index.css">
+    
+</head>
+
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">Nexventory</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#home">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About Us</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contact">Contact Us</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <a href="/login" class="btn btn-outline-light me-2">Login</a>
+                    <a href="/register" class="btn btn-primary">Register</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero-section text-center position-relative">
+        <!-- Bootstrap Carousel for Background -->
+        <div id="heroCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel" data-bs-interval="3000">
+            <div class="carousel-indicators">
+                <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active"></button>
+                <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1"></button>
+                <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2"></button>
+                <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="3"></button>
+            </div>
+            <div class="carousel-inner">
+                <div class="carousel-item active">
+                    <img src="{{ url_for('static', filename='images/warehouse_hero_1.jpg') }}" class="d-block w-100" alt="Warehouse Hero 1">
+                </div>
+                <div class="carousel-item">
+                    <img src="{{ url_for('static', filename='images/warehouse_hero_2.jpg') }}" class="d-block w-100" alt="Warehouse Hero 2">
+                </div>
+                <div class="carousel-item">
+                    <img src="{{ url_for('static', filename='images/warehouse_hero_3.jpg') }}" class="d-block w-100" alt="Warehouse Hero 3">
+                </div>
+                <div class="carousel-item">
+                    <img src="{{ url_for('static', filename='images/warehouse_hero_4.jpg') }}" class="d-block w-100" alt="Warehouse Hero 4">
+                </div>
+            </div>
+            <!-- Carousel controls (optional - hidden for cleaner look) -->
+            <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" style="display: none;">
+                <span class="carousel-control-prev-icon"></span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" style="display: none;">
+                <span class="carousel-control-next-icon"></span>
+            </button>
+        </div>
+        
+        <!-- Hero Content Overlay -->
+        <div class="hero-content position-relative z-1">
+            <div class="container">
+                <h1 class="display-4 fw-bold mb-4 text-white">Welcome to Nexventory</h1>
+                <p class="lead mb-4 text-white">Efficient Inventory Management System for Your Business</p>
+                <a href="/register" class="btn btn-light btn-lg me-2">Get Started</a>
+                <a href="#features" class="btn btn-outline-light btn-lg">Learn More</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="section bg-light">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2>Why Choose Nexventory?</h2>
+                <p class="lead">Powerful features to streamline your inventory management</p>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-4 text-center">
+                    <div class="feature-icon">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <h4>Real-time Tracking</h4>
+                    <p>Monitor your inventory in real-time with our intuitive dashboard.</p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h4>Analytics</h4>
+                    <p>Get valuable insights with our comprehensive analytics tools.</p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h4>Mobile Friendly</h4>
+                    <p>Access your inventory from anywhere, on any device.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h2>About Us</h2>
+                    <p class="lead">Your Trusted Inventory Management Partner</p>
+                    <p>At Nexventory, we understand the challenges of managing inventory efficiently. Our mission is to provide businesses of all sizes with powerful yet easy-to-use tools to streamline their inventory management processes.</p>
+                    <p>With years of experience in the industry, our team is dedicated to delivering innovative solutions that help you save time, reduce costs, and grow your business.</p>
+                </div>
+                <div class="col-lg-6">
+                    <img src="https://via.placeholder.com/600x400" alt="About Nexventory" class="img-fluid rounded">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="section bg-light">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2>Contact Us</h2>
+                <p class="lead">We'd love to hear from you</p>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="contact-info mb-4">
+                        <h4>Get in Touch</h4>
+                        <p><i class="fas fa-map-marker-alt"></i>Jl. Traktor 4 no 38</p>
+                        <p><i class="fas fa-phone"></i> +62 895 3005 3051</p>
+                        <p><i class="fas fa-envelope"></i> hubungi@nexventory.com</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <form>
+                        <div class="mb-3">
+                            <input type="text" class="form-control" placeholder="Your Name" required>
+                        </div>
+                        <div class="mb-3">
+                            <input type="email" class="form-control" placeholder="Your Email" required>
+                        </div>
+                        <div class="mb-3">
+                            <textarea class="form-control" rows="4" placeholder="Your Message" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send Message</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4">
+        <div class="container text-center">
+            <p class="mb-0">&copy; 2025 Nexventory. udah aku claim kalain jangan hitamkan</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JavaScript for Hero Carousel -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize carousel
+            const heroCarousel = new bootstrap.Carousel(document.getElementById('heroCarousel'), {
+                interval: 3000,  // Change slide every 3 seconds
+                ride: 'carousel',
+                pause: 'hover',  // Pause on hover
+                wrap: true,      // Loop back to first slide
+                keyboard: true   // Allow keyboard navigation
+            });
+            
+            // Optional: Add smooth scrolling for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

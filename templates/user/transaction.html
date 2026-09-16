@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riwayat Transaksi - Nexventory</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-box"></i> Nexventory</h2>
+            <p class="user-name">{{ current_user.username }}</p>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('user.dashboard') }}" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a href="{{ url_for('user.manage_produk') }}" class="nav-item">
+                <i class="fas fa-boxes"></i> Kelola Produk
+            </a>
+            <a href="{{ url_for('user.manage_jualan') }}" class="nav-item">
+                <i class="fas fa-shopping-cart"></i> Kelola Pembelian
+            </a>
+            <a href="{{ url_for('user.tambah_jualan') }}" class="nav-item">
+                <i class="fas fa-plus-circle"></i> Tambah Pembelian
+            </a>
+            <a href="{{ url_for('user.transaction') }}" class="nav-item active">
+                <i class="fas fa-receipt"></i> Riwayat Transaksi
+            </a>
+            <a href="{{ url_for('user.manage_akun') }}" class="nav-item">
+                <i class="fas fa-user-cog"></i> Kelola Akun
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <header class="top-header">
+            <h1>Riwayat Transaksi</h1>
+            <div class="header-actions">
+                <button class="btn-export" onclick="exportTransactions()">
+                    <i class="fas fa-download"></i> Export
+                </button>
+            </div>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <i class="fas fa-{{ 'info-circle' if category == 'info' else 'exclamation-triangle' if category == 'error' else 'check-circle' }}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Transaction Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-receipt"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ transactions|length }}</h3>
+                    <p>Total Transaksi</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-arrow-up text-success"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ transactions|selectattr('transaction_type', 'equalto', 'sale')|list|length }}</h3>
+                    <p>Pembelian</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-arrow-down text-warning"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ transactions|selectattr('transaction_type', 'equalto', 'return')|list|length }}</h3>
+                    <p>Pengembalian</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>Rp {{ "%.0f"|format(transactions|sum(attribute='total_price') if transactions else 0) }}</h3>
+                    <p>Total Nilai</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Filters -->
+        <div class="advanced-filters">
+            <div class="filter-section">
+                <h3>Filter Tanggal</h3>
+                <div class="date-filters">
+                    <input type="date" id="startDate" onchange="filterTransactions()">
+                    <span>sampai</span>
+                    <input type="date" id="endDate" onchange="filterTransactions()">
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <h3>Filter Tipe</h3>
+                <div class="type-filters">
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="sale" checked onchange="filterTransactions()"> Pembelian
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="return" checked onchange="filterTransactions()"> Pengembalian
+                    </label>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h3>Search</h3>
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Cari produk atau ID..." onkeyup="filterTransactions()">
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn-secondary" onclick="resetFilters()">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- Transactions Table -->
+        <div class="table-container">
+            <table class="transactions-table">
+                <thead>
+                    <tr>
+                        <th>
+                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                        </th>
+                        <th>ID Transaksi</th>
+                        <th>Tanggal & Waktu</th>
+                        <th>Produk</th>
+                        <th>Tipe</th>
+                        <th>Jumlah</th>
+                        <th>Harga Satuan</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="transactionsTableBody">
+                    {% if transactions %}
+                        {% for transaction in transactions %}
+                        <tr class="transaction-row" 
+                            data-date="{{ transaction.created_at.strftime('%Y-%m-%d') }}" 
+                            data-type="{{ transaction.transaction_type }}"
+                            data-product="{{ transaction.product.name if transaction.product else '' }}"
+                            data-id="{{ transaction.id }}">
+                            <td>
+                                <input type="checkbox" class="row-checkbox" value="{{ transaction.id }}">
+                            </td>
+                            <td>
+                                <span class="transaction-id">#{{ transaction.id }}</span>
+                            </td>
+                            <td>
+                                <div class="datetime">
+                                    <span class="date">{{ transaction.created_at.strftime('%d/%m/%Y') }}</span>
+                                    <span class="time">{{ transaction.created_at.strftime('%H:%M:%S') }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                {% if transaction.product %}
+                                    <div class="product-info">
+                                        <span class="product-name">{{ transaction.product.name }}</span>
+                                        <span class="product-category">{{ transaction.product.category }}</span>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">Produk tidak ditemukan</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="transaction-type {{ transaction.transaction_type }}">
+                                    {% if transaction.transaction_type == 'sale' %}
+                                        <i class="fas fa-shopping-cart"></i> Pembelian
+                                    {% else %}
+                                        <i class="fas fa-undo"></i> Pengembalian
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td>{{ transaction.quantity }}</td>
+                            <td>Rp {{ "%.2f"|format(transaction.total_price / transaction.quantity) }}</td>
+                            <td class="total-amount">
+                                Rp {{ "%.2f"|format(transaction.total_price) }}
+                            </td>
+                            <td>
+                                <span class="status-badge completed">Selesai</span>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn-view" data-id="{{ transaction.id }}" onclick="viewTransaction(this.dataset.id)" title="Lihat Detail">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn-print" data-id="{{ transaction.id }}" onclick="printTransaction(this.dataset.id)" title="Print">
+                                        <i class="fas fa-print"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="10" class="no-data">
+                                <i class="fas fa-receipt"></i>
+                                <p>Belum ada transaksi</p>
+                                <a href="{{ url_for('user.tambah_jualan') }}" class="btn-primary">
+                                    <i class="fas fa-plus"></i> Buat Transaksi Pertama
+                                </a>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Bulk Actions -->
+        <div class="bulk-actions" id="bulkActions" style="display: none;">
+            <span class="selected-count">
+                <span id="selectedCount">0</span> transaksi dipilih
+            </span>
+            <div class="action-buttons">
+                <button class="btn-secondary" onclick="exportSelected()">
+                    <i class="fas fa-download"></i> Export Selected
+                </button>
+                <button class="btn-danger" onclick="deleteSelected()">
+                    <i class="fas fa-trash"></i> Delete Selected
+                </button>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+            <button class="page-btn" disabled>
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <span class="page-info">Menampilkan 1-10 dari {{ transactions|length }} transaksi</span>
+            <button class="page-btn" disabled>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Transaction Detail Modal -->
+    <div id="transactionDetailModal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h3>Detail Transaksi</h3>
+                <button class="close-btn" onclick="closeTransactionDetailModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="transactionDetailContent">
+                    <!-- Content will be loaded dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="printTransactionDetail()">
+                    <i class="fas fa-print"></i> Print
+                </button>
+                <button class="btn-secondary" onclick="closeTransactionDetailModal()">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Filter transactions
+        function filterTransactions() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const searchValue = document.getElementById('searchInput').value.toLowerCase();
+            const typeCheckboxes = document.querySelectorAll('.type-filters input:checked');
+            const selectedTypes = Array.from(typeCheckboxes).map(cb => cb.value);
+            
+            const rows = document.querySelectorAll('.transaction-row');
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                const date = row.dataset.date;
+                const type = row.dataset.type;
+                const product = row.dataset.product.toLowerCase();
+                const id = row.dataset.id;
+
+                let showRow = true;
+
+                // Date filter
+                if (startDate && date < startDate) showRow = false;
+                if (endDate && date > endDate) showRow = false;
+
+                // Type filter
+                if (!selectedTypes.includes(type)) showRow = false;
+
+                // Search filter
+                if (searchValue && !product.includes(searchValue) && !id.includes(searchValue)) {
+                    showRow = false;
+                }
+
+                row.style.display = showRow ? '' : 'none';
+                if (showRow) visibleCount++;
+            });
+
+            updatePagination(visibleCount);
+        }
+
+        // Reset filters
+        function resetFilters() {
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            document.getElementById('searchInput').value = '';
+            document.querySelectorAll('.type-filters input').forEach(cb => cb.checked = true);
+            filterTransactions();
+        }
+
+        // Bulk selection
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+            
+            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+            updateBulkActions();
+        }
+
+        function updateBulkActions() {
+            const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+            const bulkActions = document.getElementById('bulkActions');
+            const selectedCount = document.getElementById('selectedCount');
+
+            if (checkedBoxes.length > 0) {
+                bulkActions.style.display = 'flex';
+                selectedCount.textContent = checkedBoxes.length;
+            } else {
+                bulkActions.style.display = 'none';
+            }
+        }
+
+        // Add event listeners to checkboxes
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.row-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', updateBulkActions);
+            });
+        });
+
+        // Modal functions
+        function viewTransaction(id) {
+            const modal = document.getElementById('transactionDetailModal');
+            const content = document.getElementById('transactionDetailContent');
+            
+            content.innerHTML = `
+                <div class="transaction-detail">
+                    <div class="detail-header">
+                        <h4>Transaksi #${id}</h4>
+                        <span class="status-badge completed">Selesai</span>
+                    </div>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <label>Tanggal:</label>
+                            <span>${new Date().toLocaleString('id-ID')}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Tipe:</label>
+                            <span class="transaction-type sale"><i class="fas fa-shopping-cart"></i> Pembelian</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Produk:</label>
+                            <span>Contoh Produk</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Jumlah:</label>
+                            <span>1</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Harga Satuan:</label>
+                            <span>Rp 10.000</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Total:</label>
+                            <span class="total-amount">Rp 10.000</span>
+                        </div>
+                    </div>
+                    <hr>
+                    <p>Detail lengkap akan segera tersedia</p>
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+        }
+
+        function closeTransactionDetailModal() {
+            document.getElementById('transactionDetailModal').style.display = 'none';
+        }
+
+        function printTransaction(id) {
+            window.print();
+        }
+
+        function printTransactionDetail() {
+            window.print();
+        }
+
+        function exportTransactions() {
+            alert('Fitur export akan segera tersedia');
+        }
+
+        function exportSelected() {
+            const selected = document.querySelectorAll('.row-checkbox:checked');
+            alert(`Export ${selected.length} transaksi akan segera tersedia`);
+        }
+
+        function deleteSelected() {
+            const selected = document.querySelectorAll('.row-checkbox:checked');
+            if (confirm(`Apakah Anda yakin ingin menghapus ${selected.length} transaksi?`)) {
+                alert('Fitur hapus akan segera tersedia');
+            }
+        }
+
+        function updatePagination(visibleCount) {
+            const pageInfo = document.querySelector('.page-info');
+            if (pageInfo) {
+                pageInfo.textContent = `Menampilkan transaksi yang difilter: ${visibleCount}`;
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('transactionDetailModal');
+            if (event.target === modal) {
+                closeTransactionDetailModal();
+            }
+        }
+    </script>
+</body>
+</html>

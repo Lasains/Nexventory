@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kelola Pengguna - Admin Nexventory</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .admin-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .admin-nav .nav-item {
+            padding: 12px 20px;
+            margin: 5px 10px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #e2e8f0;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+        }
+        .admin-nav .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+        .admin-nav .nav-item.active {
+            background: rgba(255, 255, 255, 0.2);
+            border-left: 4px solid #667eea;
+        }
+        .admin-nav .nav-item i {
+            margin-right: 10px;
+            width: 20px;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .page-header h1 {
+            color: #2d3748;
+            margin: 0;
+        }
+        .add-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.3s ease;
+        }
+        .add-btn:hover {
+            transform: translateY(-2px);
+        }
+        .users-table {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .table th {
+            background: #f7fafc;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #4a5568;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .table td {
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: middle;
+        }
+        .table tr:hover {
+            background: #f7fafc;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .user-details h4 {
+            margin: 0 0 4px 0;
+            color: #2d3748;
+        }
+        .user-details p {
+            margin: 0;
+            color: #718096;
+            font-size: 14px;
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .status-active {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        .status-inactive {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        .role-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .role-admin {
+            background: #e9d8fd;
+            color: #553c9a;
+        }
+        .role-user {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-action {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            transition: transform 0.3s ease;
+        }
+        .btn-action:hover {
+            transform: translateY(-2px);
+        }
+        .btn-edit {
+            background: #4299e1;
+            color: white;
+        }
+        .btn-delete {
+            background: #f56565;
+            color: white;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #718096;
+        }
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            color: #cbd5e0;
+        }
+        .empty-state h3 {
+            margin: 0 0 10px 0;
+            color: #4a5568;
+        }
+        .empty-state p {
+            margin: 0 0 20px 0;
+        }
+        .search-filter {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .filter-select {
+            padding: 10px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            min-width: 150px;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 20px;
+        }
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .pagination button:hover {
+            background: #f7fafc;
+        }
+        .pagination .active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-box"></i> Nexventory</h2>
+            <p class="user-name">{{ current_user.username }}<span class="admin-badge">ADMIN</span></p>
+        </div>
+        
+        <nav class="sidebar-nav admin-nav">
+            <a href="{{ url_for('admin.dashboard') }}" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i> Dashboard Admin
+            </a>
+            <a href="{{ url_for('admin.manage_users') }}" class="nav-item active">
+                <i class="fas fa-users"></i> Kelola Pengguna
+            </a>
+            <a href="{{ url_for('admin.manage_products') }}" class="nav-item">
+                <i class="fas fa-boxes"></i> Kelola Produk
+            </a>
+            <a href="{{ url_for('admin.add_product') }}" class="nav-item">
+                <i class="fas fa-plus-circle"></i> Tambah Produk
+            </a>
+            <a href="{{ url_for('admin.manage_transactions') }}" class="nav-item">
+                <i class="fas fa-receipt"></i> Kelola Transaksi
+            </a>
+            <a href="{{ url_for('user.dashboard') }}" class="nav-item">
+                <i class="fas fa-exchange-alt"></i> Mode User
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <header class="top-header">
+            <h1>Kelola Pengguna</h1>
+            <div class="header-info">
+                <span>Manajemen pengguna sistem</span>
+            </div>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <i class="fas fa-{{ 'info-circle' if category == 'info' else 'exclamation-triangle' if category == 'error' else 'check-circle' }}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <h2>Daftar Pengguna</h2>
+            <a href="#" class="add-btn" onclick="showAddUserModal()">
+                <i class="fas fa-plus"></i> Tambah Pengguna
+            </a>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="search-filter">
+            <input type="text" class="search-input" placeholder="Cari pengguna..." id="searchInput">
+            <select class="filter-select" id="roleFilter">
+                <option value="">Semua Role</option>
+                <option value="admin">Admin</option>
+                <option value="user">User</option>
+            </select>
+            <select class="filter-select" id="statusFilter">
+                <option value="">Semua Status</option>
+                <option value="active">Aktif</option>
+                <option value="inactive">Nonaktif</option>
+            </select>
+        </div>
+
+        <!-- Users Table -->
+        <div class="users-table">
+            {% if users %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Pengguna</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Bergabung</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar">
+                                    {{ user.username[0].upper() }}
+                                </div>
+                                <div class="user-details">
+                                    <h4>{{ user.username }}</h4>
+                                    <p>{{ user.email }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="role-badge {{ 'role-admin' if user.is_admin else 'role-user' }}">
+                                {{ 'Admin' if user.is_admin else 'User' }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="status-badge {{ 'status-active' if user.is_active else 'status-inactive' }}">
+                                {{ 'Aktif' if user.is_active else 'Nonaktif' }}
+                            </span>
+                        </td>
+                        <td>
+                            {{ user.created_at.strftime('%d %b %Y') if user.created_at else 'N/A' }}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="#" class="btn-action btn-edit" onclick="editUser({{ user.id }})">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                {% if user.id != current_user.id %}
+                                <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn-action btn-delete" onclick="return confirm('Apakah Anda yakin ingin menghapus pengguna ini?')">
+                                        <i class="fas fa-trash"></i> Hapus
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-users"></i>
+                <h3>Belum ada pengguna</h3>
+                <p>Belum ada pengguna yang terdaftar dalam sistem</p>
+                <a href="#" class="add-btn" onclick="showAddUserModal()">
+                    <i class="fas fa-plus"></i> Tambah Pengguna Pertama
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Pagination -->
+        {% if users %}
+        <div class="pagination">
+            <button onclick="previousPage()">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="active">1</button>
+            <button onclick="nextPage()">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-plus"></i> Tambah Pengguna Baru</h3>
+                <button class="close-btn" onclick="closeAddUserModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ url_for('admin.add_user') }}">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nama Depan</label>
+                        <input type="text" name="first_name">
+                    </div>
+                    <div class="form-group">
+                        <label>Nama Belakang</label>
+                        <input type="text" name="last_name">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Role</label>
+                        <select name="is_admin">
+                            <option value="0">User</option>
+                            <option value="1">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="is_active" checked> Aktif
+                        </label>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="closeAddUserModal()">Batal</button>
+                        <button type="submit" class="btn-primary">Tambah Pengguna</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .modal-header h3 {
+            margin: 0;
+            color: #2d3748;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #718096;
+        }
+        .modal-body {
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #4a5568;
+            font-weight: 500;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+    </style>
+
+    <script>
+        // Active navigation highlighting
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navItems = document.querySelectorAll('.nav-item');
+            
+            navItems.forEach(item => {
+                if (item.getAttribute('href') === currentPath) {
+                    item.classList.add('active');
+                }
+            });
+        });
+
+        // Modal functions
+        function showAddUserModal() {
+            document.getElementById('addUserModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAddUserModal() {
+            document.getElementById('addUserModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        function editUser(userId) {
+            // Placeholder for edit user functionality
+            alert('Edit user functionality coming soon for user ID: ' + userId);
+        }
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = document.querySelectorAll('.table tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+
+        // Filter functionality
+        document.getElementById('roleFilter').addEventListener('change', filterUsers);
+        document.getElementById('statusFilter').addEventListener('change', filterUsers);
+
+        function filterUsers() {
+            const roleFilter = document.getElementById('roleFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const rows = document.querySelectorAll('.table tbody tr');
+            
+            rows.forEach(row => {
+                let showRow = true;
+                
+                if (roleFilter) {
+                    const roleBadge = row.querySelector('.role-badge');
+                    if (roleBadge) {
+                        const roleText = roleBadge.textContent.toLowerCase();
+                        if (roleText !== roleFilter.toLowerCase()) {
+                            showRow = false;
+                        }
+                    }
+                }
+                
+                if (statusFilter && showRow) {
+                    const statusBadge = row.querySelector('.status-badge');
+                    if (statusBadge) {
+                        const statusText = statusBadge.textContent.toLowerCase();
+                        const isActive = statusText.includes('aktif');
+                        if ((statusFilter === 'active' && !isActive) || (statusFilter === 'inactive' && isActive)) {
+                            showRow = false;
+                        }
+                    }
+                }
+                
+                row.style.display = showRow ? '' : 'none';
+            });
+        }
+
+        // Pagination placeholders
+        function previousPage() {
+            console.log('Previous page');
+        }
+
+        function nextPage() {
+            console.log('Next page');
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('addUserModal');
+            if (event.target == modal) {
+                closeAddUserModal();
+            }
+        }
+    </script>
+</body>
+</html>

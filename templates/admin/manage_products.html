@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kelola Produk - Admin Nexventory</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .admin-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .admin-nav .nav-item {
+            padding: 12px 20px;
+            margin: 5px 10px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #e2e8f0;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+        }
+        .admin-nav .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+        .admin-nav .nav-item.active {
+            background: rgba(255, 255, 255, 0.2);
+            border-left: 4px solid #667eea;
+        }
+        .admin-nav .nav-item i {
+            margin-right: 10px;
+            width: 20px;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .page-header h1 {
+            color: #2d3748;
+            margin: 0;
+        }
+        .add-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.3s ease;
+        }
+        .add-btn:hover {
+            transform: translateY(-2px);
+        }
+        .search-filter {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .filter-select {
+            padding: 10px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            min-width: 150px;
+        }
+        .products-table {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .table th {
+            background: #f7fafc;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #4a5568;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .table td {
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: middle;
+        }
+        .table tr:hover {
+            background: #f7fafc;
+        }
+        .product-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .product-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #f7fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #cbd5e0;
+        }
+        .product-details h4 {
+            margin: 0 0 4px 0;
+            color: #2d3748;
+        }
+        .product-details p {
+            margin: 0 0 4px 0;
+            color: #718096;
+            font-size: 14px;
+        }
+        .stock-info {
+            font-size: 14px;
+        }
+        .stock-normal {
+            color: #48bb78;
+            font-weight: 500;
+        }
+        .stock-low {
+            color: #ed8936;
+            font-weight: 500;
+        }
+        .stock-critical {
+            color: #f56565;
+            font-weight: 500;
+        }
+        .price {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .status-available {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        .status-out-of-stock {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-action {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            transition: transform 0.3s ease;
+        }
+        .btn-action:hover {
+            transform: translateY(-2px);
+        }
+        .btn-edit {
+            background: #4299e1;
+            color: white;
+        }
+        .btn-delete {
+            background: #f56565;
+            color: white;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #718096;
+        }
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            color: #cbd5e0;
+        }
+        .empty-state h3 {
+            margin: 0 0 10px 0;
+            color: #4a5568;
+        }
+        .empty-state p {
+            margin: 0 0 20px 0;
+        }
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .stat-card .icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .stat-card.total .icon { color: #667eea; }
+        .stat-card.available .icon { color: #48bb78; }
+        .stat-card.low .icon { color: #ed8936; }
+        .stat-card.out .icon { color: #f56565; }
+        .stat-card h3 {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0 0 5px 0;
+            color: #2d3748;
+        }
+        .stat-card p {
+            margin: 0;
+            color: #718096;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-box"></i> Nexventory</h2>
+            <p class="user-name">{{ current_user.username }}<span class="admin-badge">ADMIN</span></p>
+        </div>
+        
+        <nav class="sidebar-nav admin-nav">
+            <a href="{{ url_for('admin.dashboard') }}" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i> Dashboard Admin
+            </a>
+            <a href="{{ url_for('admin.manage_users') }}" class="nav-item">
+                <i class="fas fa-users"></i> Kelola Pengguna
+            </a>
+            <a href="{{ url_for('admin.manage_products') }}" class="nav-item active">
+                <i class="fas fa-boxes"></i> Kelola Produk
+            </a>
+            <a href="{{ url_for('admin.add_product') }}" class="nav-item">
+                <i class="fas fa-plus-circle"></i> Tambah Produk
+            </a>
+            <a href="{{ url_for('admin.manage_transactions') }}" class="nav-item">
+                <i class="fas fa-receipt"></i> Kelola Transaksi
+            </a>
+            <a href="{{ url_for('user.dashboard') }}" class="nav-item">
+                <i class="fas fa-exchange-alt"></i> Mode User
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <header class="top-header">
+            <h1>Kelola Produk</h1>
+            <div class="header-info">
+                <span>Manajemen inventori produk</span>
+            </div>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <i class="fas fa-{{ 'info-circle' if category == 'info' else 'exclamation-triangle' if category == 'error' else 'check-circle' }}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Statistics Row -->
+        <div class="stats-row">
+            <div class="stat-card total">
+                <div class="icon">
+                    <i class="fas fa-boxes"></i>
+                </div>
+                <h3>{{ total_products }}</h3>
+                <p>Total Produk</p>
+            </div>
+            <div class="stat-card available">
+                <div class="icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3>{{ available_products }}</h3>
+                <p>Tersedia</p>
+            </div>
+            <div class="stat-card low">
+                <div class="icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h3>{{ low_stock_products }}</h3>
+                <p>Stok Menipis</p>
+            </div>
+            <div class="stat-card out">
+                <div class="icon">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <h3>{{ out_of_stock_products }}</h3>
+                <p>Habis Stok</p>
+            </div>
+        </div>
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <h2>Daftar Produk</h2>
+            <a href="{{ url_for('admin.add_product') }}" class="add-btn">
+                <i class="fas fa-plus"></i> Tambah Produk
+            </a>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="search-filter">
+            <input type="text" class="search-input" placeholder="Cari produk..." id="searchInput">
+            <select class="filter-select" id="categoryFilter">
+                <option value="">Semua Kategori</option>
+                <option value="elektronik">Elektronik</option>
+                <option value="fashion">Fashion</option>
+                <option value="makanan">Makanan</option>
+                <option value="lainnya">Lainnya</option>
+            </select>
+            <select class="filter-select" id="stockFilter">
+                <option value="">Semua Stok</option>
+                <option value="available">Tersedia</option>
+                <option value="low">Stok Menipis</option>
+                <option value="out">Habis</option>
+            </select>
+        </div>
+
+        <!-- Products Table -->
+        <div class="products-table">
+            {% if products %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Produk</th>
+                        <th>Kategori</th>
+                        <th>Stok</th>
+                        <th>Harga</th>
+                        <th>Status</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in products %}
+                    <tr>
+                        <td>
+                            <div class="product-info">
+                                <div class="product-image">
+                                    {% if product.image %}
+                                        <img src="{{ url_for('static', filename='uploads/' + product.image) }}" alt="{{ product.name }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+                                    {% else %}
+                                        <i class="fas fa-box"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="product-details">
+                                    <h4>{{ product.name }}</h4>
+                                    <p>{{ product.description[:50] }}{% if product.description|length > 50 %}...{% endif %}</p>
+                                    <div class="stock-info">
+                                        {% if product.stock == 0 %}
+                                            <span class="stock-critical">Habis</span>
+                                        {% elif product.stock <= product.min_stock %}
+                                            <span class="stock-low">Menipis ({{ product.stock }}/{{ product.min_stock }})</span>
+                                        {% else %}
+                                            <span class="stock-normal">{{ product.stock }} unit</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ product.category or 'Tidak ada kategori' }}</td>
+                        <td>
+                            <div class="stock-info">
+                                {% if product.stock == 0 %}
+                                    <span class="stock-critical">0</span>
+                                {% elif product.stock <= product.min_stock %}
+                                    <span class="stock-low">{{ product.stock }}</span>
+                                {% else %}
+                                    <span class="stock-normal">{{ product.stock }}</span>
+                                {% endif %}
+                                <br>
+                                <small>Min: {{ product.min_stock }}</small>
+                            </div>
+                        </td>
+                        <td class="price">Rp {{ "%.0f"|format(product.price) }}</td>
+                        <td>
+                            {% if product.stock > 0 %}
+                                <span class="status-badge status-available">Tersedia</span>
+                            {% else %}
+                                <span class="status-badge status-out-of-stock">Habis</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{{ url_for('admin.edit_product', product_id=product.id) }}" class="btn-action btn-edit">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <form method="POST" action="{{ url_for('admin.delete_product', product_id=product.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn-action btn-delete" onclick="return confirm('Apakah Anda yakin ingin menghapus produk ini?')">
+                                        <i class="fas fa-trash"></i> Hapus
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-boxes"></i>
+                <h3>Belum ada produk</h3>
+                <p>Belum ada produk yang terdaftar dalam sistem</p>
+                <a href="{{ url_for('admin.add_product') }}" class="add-btn">
+                    <i class="fas fa-plus"></i> Tambah Produk Pertama
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // Active navigation highlighting
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navItems = document.querySelectorAll('.nav-item');
+            
+            navItems.forEach(item => {
+                if (item.getAttribute('href') === currentPath) {
+                    item.classList.add('active');
+                }
+            });
+        });
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = document.querySelectorAll('.table tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+
+        // Filter functionality
+        document.getElementById('categoryFilter').addEventListener('change', filterProducts);
+        document.getElementById('stockFilter').addEventListener('change', filterProducts);
+
+        function filterProducts() {
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const stockFilter = document.getElementById('stockFilter').value;
+            const rows = document.querySelectorAll('.table tbody tr');
+            
+            rows.forEach(row => {
+                let showRow = true;
+                
+                if (categoryFilter) {
+                    const categoryCell = row.cells[1];
+                    if (categoryCell) {
+                        const categoryText = categoryCell.textContent.toLowerCase();
+                        if (!categoryText.includes(categoryFilter.toLowerCase())) {
+                            showRow = false;
+                        }
+                    }
+                }
+                
+                if (stockFilter && showRow) {
+                    const statusBadge = row.querySelector('.status-badge');
+                    if (statusBadge) {
+                        const statusText = statusBadge.textContent.toLowerCase();
+                        const isAvailable = statusText.includes('tersedia');
+                        const isOut = statusText.includes('habis');
+                        
+                        if ((stockFilter === 'available' && !isAvailable) || 
+                            (stockFilter === 'out' && !isOut)) {
+                            showRow = false;
+                        }
+                    }
+                }
+                
+                row.style.display = showRow ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>
