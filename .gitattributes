@@ -1,0 +1,2 @@
+.browsers/** filter=lfs diff=lfs merge=lfs -text
+.pip_cache/** filter=lfs diff=lfs merge=lfs -text

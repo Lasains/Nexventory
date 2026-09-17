@@ -11,6 +11,9 @@ def create_app(config_class=Config):
     # Get the parent directory of the app module
     basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
     
+    # Ensure instance directory exists
+    os.makedirs(os.path.join(basedir, 'instance'), exist_ok=True)
+    
     app = Flask(__name__, 
                 template_folder=os.path.join(basedir, 'templates'),
                 static_folder=os.path.join(basedir, 'static'))

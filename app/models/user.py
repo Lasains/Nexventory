@@ -66,7 +66,12 @@ class User(db.Model):
     def is_anonymous(self):
         """Return True if user is anonymous."""
         return False
-    
+
+    @property
+    def is_admin(self):
+        """Return True if user has the admin role."""
+        return self.role == 'admin'
+
     def generate_reset_token(self, expires_in=3600):
         """Generate a password reset token."""
         serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])

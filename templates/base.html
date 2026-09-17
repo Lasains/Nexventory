@@ -46,10 +46,24 @@
     
     <!-- Base Styling -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+
+    <style>
+        @media (prefers-reduced-motion: reduce) {
+            *, ::before, ::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
     
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen selection:bg-brand-500 selection:text-white">
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-40 hidden md:hidden transition-opacity duration-300" aria-hidden="true"></div>
+
     <div class="flex min-h-screen">
         <!-- Unified Sidebar -->
         {% include 'components/sidebar.html' %}
@@ -59,6 +73,11 @@
             <!-- Global Top-Bar / Header -->
             <header class="sticky top-0 z-30 h-16 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
                 <div class="flex items-center gap-3">
+                    <!-- Mobile Hamburger Button -->
+                    <button id="sidebar-toggle" type="button" aria-label="Toggle Navigation Menu" class="md:hidden flex items-center justify-center w-10 h-10 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <i class="fa-solid fa-bars text-base" aria-hidden="true"></i>
+                    </button>
+
                     <div class="flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                         <span class="text-xs font-mono text-slate-400 uppercase tracking-wider">
@@ -104,19 +123,53 @@
     </div>
 
     <!-- Global Toast Container -->
-    <div id="toast-container" class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 w-80 max-w-[calc(100vw-3rem)] pointer-events-none"></div>
+    <div id="toast-container" class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 w-80 max-w-[calc(100vw-3rem)] pointer-events-none" aria-live="polite" role="status"></div>
 
     {% block scripts %}{% endblock %}
+
+    <!-- Mobile Drawer & Navigation Script -->
+    <script>
+    (function() {
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('sidebar-toggle');
+        const closeBtn = document.getElementById('sidebar-close');
+        const backdrop = document.getElementById('sidebar-backdrop');
+
+        function openSidebar() {
+            if (!sidebar) return;
+            sidebar.classList.remove('-translate-x-full');
+            if (backdrop) backdrop.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function closeSidebar() {
+            if (!sidebar) return;
+            sidebar.classList.add('-translate-x-full');
+            if (backdrop) backdrop.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        if (toggleBtn) toggleBtn.addEventListener('click', openSidebar);
+        if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+        if (backdrop) backdrop.addEventListener('click', closeSidebar);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && sidebar && !sidebar.classList.contains('-translate-x-full')) {
+                closeSidebar();
+            }
+        });
+    })();
+    </script>
 
     <!-- Toast Notification System -->
     <script>
     (function() {
         const ICONS = {
-            success: '<i class="fa-solid fa-circle-check text-emerald-400"></i>',
-            error:   '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i>',
-            danger:  '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i>',
-            warning: '<i class="fa-solid fa-circle-exclamation text-amber-400"></i>',
-            info:    '<i class="fa-solid fa-circle-info text-sky-400"></i>',
+            success: '<i class="fa-solid fa-circle-check text-emerald-400" aria-hidden="true"></i>',
+            error:   '<i class="fa-solid fa-triangle-exclamation text-rose-400" aria-hidden="true"></i>',
+            danger:  '<i class="fa-solid fa-triangle-exclamation text-rose-400" aria-hidden="true"></i>',
+            warning: '<i class="fa-solid fa-circle-exclamation text-amber-400" aria-hidden="true"></i>',
+            info:    '<i class="fa-solid fa-circle-info text-sky-400" aria-hidden="true"></i>',
         };
         const BORDERS = {
             success: 'border-l-2 border-emerald-500',
@@ -143,13 +196,15 @@
                 <span class="flex-shrink-0 mt-0.5">${icon}</span>
                 <span class="flex-1 leading-relaxed">${message}</span>
                 <button onclick="this.closest('[data-toast]').remove()" 
+                        aria-label="Tutup notifikasi"
                         class="flex-shrink-0 text-slate-500 hover:text-white transition-colors ml-1 mt-0.5">
-                    <i class="fa-solid fa-xmark text-xs"></i>
+                    <i class="fa-solid fa-xmark text-xs" aria-hidden="true"></i>
                 </button>
             `;
             toast.dataset.toast = '1';
 
             const container = document.getElementById('toast-container');
+            if (!container) return;
             container.appendChild(toast);
 
             // Animate in
@@ -180,8 +235,17 @@
             });
         });
 
-        // Expose globally for manual use: window.showToast('success', 'Done!')
-        window.showToast = createToast;
+        // Expose globally for manual use: window.showToast('success', 'Done!') or ('Done!', 'success')
+        window.showToast = function(arg1, arg2) {
+            // Support both showToast('error', 'msg') and showToast('msg', 'error')
+            if (ICONS[arg1] || BORDERS[arg1]) {
+                createToast(arg1, arg2);
+            } else if (ICONS[arg2] || BORDERS[arg2]) {
+                createToast(arg2, arg1);
+            } else {
+                createToast('info', arg1);
+            }
+        };
     })();
     </script>
 </body>

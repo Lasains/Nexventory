@@ -1,16 +1,19 @@
-<aside class="fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between">
+<aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
     <!-- Top Branding & Profile -->
     <div>
         <!-- Brand Header -->
         <div class="h-16 px-6 border-b border-slate-800 flex items-center justify-between">
             <a href="{{ url_for('main.index') }}" class="flex items-center gap-3 group">
                 <div class="w-8 h-8 rounded-md bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white shadow-md shadow-brand-500/20 group-hover:scale-105 transition-transform">
-                    <i class="fa-solid fa-boxes-stacked text-sm"></i>
+                    <i class="fa-solid fa-boxes-stacked text-sm" aria-hidden="true"></i>
                 </div>
                 <div class="flex items-baseline gap-1.5">
                     <span class="font-extrabold text-base tracking-wider text-white">NEXVENTORY</span>
                 </div>
             </a>
+            <button id="sidebar-close" type="button" aria-label="Tutup navigasi menu" class="md:hidden text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition-colors">
+                <i class="fa-solid fa-xmark text-lg" aria-hidden="true"></i>
+            </button>
         </div>
 
         <!-- Operator Peek Card -->
@@ -31,57 +34,63 @@
         {% endif %}
 
         <!-- Navigation Menu -->
-        <nav class="p-4 space-y-1.5 text-xs font-medium">
+        <nav class="p-4 space-y-1.5 text-xs font-medium" aria-label="Main navigation">
             {% if not current_user.is_authenticated %}
                 <a href="{{ url_for('main.index') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'main.index' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
-                    <i class="fa-solid fa-house w-4 text-center"></i> Home Portal
+                    <i class="fa-solid fa-house w-4 text-center" aria-hidden="true"></i> Home Portal
                 </a>
                 <a href="{{ url_for('auth.login') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'auth.login' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
-                    <i class="fa-solid fa-arrow-right-to-bracket w-4 text-center"></i> Sign In
+                    <i class="fa-solid fa-arrow-right-to-bracket w-4 text-center" aria-hidden="true"></i> Sign In
                 </a>
                 <a href="{{ url_for('auth.register') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'auth.register' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
-                    <i class="fa-solid fa-user-plus w-4 text-center"></i> Register
+                    <i class="fa-solid fa-user-plus w-4 text-center" aria-hidden="true"></i> Register
                 </a>
             {% elif current_user.is_admin %}
                 <!-- Admin Navigation -->
                 <div class="px-3 pt-2 pb-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500">SYSTEM COMMAND</div>
                 <a href="{{ url_for('admin.dashboard') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'admin.dashboard' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
-                    <i class="fa-solid fa-gauge-high w-4 text-center"></i> Dashboard
+                    <i class="fa-solid fa-gauge-high w-4 text-center" aria-hidden="true"></i> Dashboard
                 </a>
                 <a href="{{ url_for('admin.manage_users') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'admin.manage_users' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
-                    <i class="fa-solid fa-users-gear w-4 text-center"></i> Manage Users
+                    <i class="fa-solid fa-users-gear w-4 text-center" aria-hidden="true"></i> Manage Users
                 </a>
                 <a href="{{ url_for('admin.manage_employes') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'admin.manage_employes' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
-                    <i class="fa-solid fa-id-badge w-4 text-center"></i> Manage Staff
+                    <i class="fa-solid fa-id-badge w-4 text-center" aria-hidden="true"></i> Manage Staff
                 </a>
 
                 <div class="px-3 pt-4 pb-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500">INVENTORY LOGISTICS</div>
                 <a href="{{ url_for('admin.manage_products') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'admin.manage_products' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
-                    <i class="fa-solid fa-boxes-stacked w-4 text-center"></i> Products Master
+                    <i class="fa-solid fa-boxes-stacked w-4 text-center" aria-hidden="true"></i> Products Master
                 </a>
                 <a href="{{ url_for('admin.manage_transactions') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'admin.manage_transactions' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
-                    <i class="fa-solid fa-receipt w-4 text-center"></i> Audit Ledger
+                    <i class="fa-solid fa-receipt w-4 text-center" aria-hidden="true"></i> Audit Ledger
                 </a>
                 <a href="{{ url_for('admin.manage_akun') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'admin.manage_akun' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
-                    <i class="fa-solid fa-shield-halved w-4 text-center"></i> Security & Account
+                    <i class="fa-solid fa-shield-halved w-4 text-center" aria-hidden="true"></i> Security & Account
                 </a>
             {% else %}
                 <!-- Operator Navigation -->
                 <div class="px-3 pt-2 pb-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500">OPERATIONAL HUB</div>
                 <a href="{{ url_for('user.dashboard') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'user.dashboard' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
-                    <i class="fa-solid fa-chart-pie w-4 text-center"></i> Overview
+                    <i class="fa-solid fa-chart-pie w-4 text-center" aria-hidden="true"></i> Overview
+                </a>
+                <a href="{{ url_for('user.beli_produk') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'user.beli_produk' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
+                    <i class="fa-solid fa-store w-4 text-center" aria-hidden="true"></i> Procurement Hub
+                </a>
+                <a href="{{ url_for('user.checkout') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'user.checkout' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
+                    <i class="fa-solid fa-credit-card w-4 text-center" aria-hidden="true"></i> Checkout & Pay
                 </a>
                 <a href="{{ url_for('user.manage_produk') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'user.manage_produk' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
-                    <i class="fa-solid fa-boxes-stacked w-4 text-center"></i> Stock Catalog
+                    <i class="fa-solid fa-boxes-stacked w-4 text-center" aria-hidden="true"></i> Stock Catalog
                 </a>
                 <a href="{{ url_for('user.manage_jualan') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'user.manage_jualan' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
-                    <i class="fa-solid fa-cart-shopping w-4 text-center"></i> Sales Records
+                    <i class="fa-solid fa-cart-shopping w-4 text-center" aria-hidden="true"></i> Sales Records
                 </a>
                 <a href="{{ url_for('user.transaction') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'user.transaction' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
-                    <i class="fa-solid fa-clock-rotate-left w-4 text-center"></i> Movement Ledger
+                    <i class="fa-solid fa-clock-rotate-left w-4 text-center" aria-hidden="true"></i> Movement Ledger
                 </a>
                 <a href="{{ url_for('user.manage_akun') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-colors {% if request.endpoint == 'user.manage_akun' %}bg-brand-500/10 text-brand-400 font-semibold border border-brand-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
-                    <i class="fa-solid fa-user-gear w-4 text-center"></i> Operator Profile
+                    <i class="fa-solid fa-user-gear w-4 text-center" aria-hidden="true"></i> Operator Profile
                 </a>
             {% endif %}
         </nav>
@@ -90,8 +99,8 @@
     <!-- Bottom Actions / Logout -->
     {% if current_user.is_authenticated %}
     <div class="p-4 border-t border-slate-800">
-        <a href="{{ url_for('auth.logout') }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium text-rose-400 hover:bg-rose-950/50 hover:text-rose-300 border border-transparent hover:border-rose-800/60 transition-all">
-            <i class="fa-solid fa-power-off w-4 text-center"></i>
+        <a href="{{ url_for('auth.logout') }}" aria-label="Terminate session and log out" class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium text-rose-400 hover:bg-rose-950/50 hover:text-rose-300 border border-transparent hover:border-rose-800/60 transition-all">
+            <i class="fa-solid fa-power-off w-4 text-center" aria-hidden="true"></i>
             <span>Terminate Session</span>
         </a>
     </div>

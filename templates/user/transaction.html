@@ -158,20 +158,21 @@
                             {% endif %}
                         </td>
                         <td class="py-3.5 px-4 text-center">
-                            <span class="font-bold {% if txn.transaction_type == 'sale' %}text-emerald-400{% else %}text-amber-400{% endif %}">
+                            <span class="font-bold tabular-nums {% if txn.transaction_type == 'sale' %}text-emerald-400{% else %}text-amber-400{% endif %}">
                                 {{ '-' if txn.transaction_type == 'sale' else '+' }}{{ txn.quantity }} pcs
                             </span>
                         </td>
-                        <td class="py-3.5 px-4 text-right text-slate-400">
+                        <td class="py-3.5 px-4 text-right text-slate-400 tabular-nums">
                             Rp {{ "{:,.0f}".format(txn.total_price / txn.quantity if txn.quantity > 0 else 0) }}
                         </td>
-                        <td class="py-3.5 px-4 text-right font-bold text-white">
+                        <td class="py-3.5 px-4 text-right font-bold text-white tabular-nums">
                             Rp {{ "{:,.0f}".format(txn.total_price) }}
                         </td>
                         <td class="py-3.5 px-4 text-right">
                             <a href="{{ url_for('user.edit_jualan', trans_id=txn.id) }}" 
-                               class="inline-flex w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 items-center justify-center transition-colors" title="Adjust Transaction">
-                                <i class="fa-solid fa-pen-to-square text-[11px]"></i>
+                               aria-label="Adjust transaction movement #{{ txn.id }}"
+                               class="inline-flex w-11 h-11 min-w-[44px] min-h-[44px] rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 items-center justify-center transition-colors" title="Adjust Transaction">
+                                <i class="fa-solid fa-pen-to-square text-xs" aria-hidden="true"></i>
                             </a>
                         </td>
                     </tr>

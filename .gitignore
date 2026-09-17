@@ -29,7 +29,11 @@ instance/
 *.swo
 
 .github/
-.agent/
 
 *.json
 *md
+
+*.png
+
+tests/
+.agents/

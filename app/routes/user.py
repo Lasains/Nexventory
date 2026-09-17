@@ -1,13 +1,17 @@
-from flask import Blueprint, render_template, request, flash, redirect, url_for, session, jsonify, current_app
+from flask import Blueprint, render_template, request, flash, redirect, url_for, session, jsonify, current_app, abort
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 import os
+import logging
 from app.extensions import db
 from app.models.product import Product
 from app.models.transaction import Transaction
 from datetime import datetime, timedelta
 import json
-from app.services.qris_service import QRIService
+from app.services.midtrans_service import MidtransService
+from app.config.payment_config import PaymentConfig
+
+logger = logging.getLogger(__name__)
 
 user_bp = Blueprint('user', __name__)
 
@@ -35,365 +39,340 @@ def save_uploaded_file(file):
         return filename
     return None
 
-@user_bp.route('/checkout', methods=['GET', 'POST'])
+@user_bp.route('/checkout', methods=['GET'])
 @login_required
 def checkout():
-    if request.method == 'GET':
-        # Get cart data from session or localStorage
-        cart_data = request.args.get('cart_data')
-        if cart_data:
-            try:
-                cart = json.loads(cart_data)
-            except:
-                cart = []
-        else:
-            cart = []
-        
-        # Calculate order totals
-        subtotal = sum(item['price'] * item['quantity'] for item in cart)
-        service_fee = subtotal * 0.02  # 2% service fee
-        total_amount = subtotal + service_fee
-        
-        # Mock order items for template
-        order_items = []
-        for item in cart:
-            # Mock product data - in real app, fetch from database
-            order_items.append({
-                'product': {
-                    'name': item['name'],
-                    'image': None,
-                    'seller_name': 'Penjual Sample'
-                },
-                'quantity': item['quantity']
-            })
-    if request.method == 'POST':
-        # Process checkout form submission
-        customer_name = request.form.get('customer_name')
-        customer_phone = request.form.get('customer_phone')
-        customer_address = request.form.get('customer_address')
-        payment_method = request.form.get('payment_method')
-        
-        # Get cart data from form or session
-        cart_data = request.form.get('cart_data')
-        if cart_data:
-            try:
-                cart_items = json.loads(cart_data)
-            except:
-                cart_items = []
-        else:
-            cart_items = []
-        
-        # Validate form
-        if not customer_name or not customer_phone or not customer_address:
-            flash('Silakan lengkapi semua field yang wajib diisi', 'error')
-            return redirect(url_for('user.checkout'))
-        
-        # Create order (mock implementation)
-        order_number = 'ORD' + str(int(datetime.now().timestamp()))
-        total_amount = sum(item['price'] * item['quantity'] for item in cart_items)
-        service_fee = total_amount * 0.02
-        grand_total = total_amount + service_fee
-        
-        # Store order in session or database (mock)
-        order_data = {
-            'id': str(int(datetime.now().timestamp())),
-            'order_number': order_number,
-            'customer_name': customer_name,
-            'customer_phone': customer_phone,
-            'customer_address': customer_address,
-            'payment_method': payment_method,
-            'total_amount': grand_total,
-            'status': 'pending',
-            'created_at': datetime.now(),
-            'items': cart_items
-        }
-        
-        # Store in session for demo
-        if 'orders' not in session:
-            session['orders'] = []
-        session['orders'].append(order_data)
-        
-        if payment_method == 'qris':
-            flash(f'Pesanan {order_number} berhasil dibuat! Silakan scan QR untuk pembayaran.', 'success')
-        elif payment_method == 'transfer':
-            flash(f'Pesanan {order_number} berhasil dibuat! Silakan transfer ke rekening yang tertera.', 'success')
-        elif payment_method == 'cod':
-            flash(f'Pesanan {order_number} berhasil dibuat! Barang akan dikirim ke alamat Anda.', 'success')
-        
-        return redirect(url_for('user.transaction'))
-    
-    # GET request - show checkout page
-    # Get cart data from URL parameter or session
-    cart_data = request.args.get('cart_data')
+    """Render checkout page with cart data from query params or product_id"""
+    cart_data = request.args.get('cart_data', '')
+    product_id = request.args.get('product_id', type=int)
+    quantity = request.args.get('quantity', 1, type=int)
+
+    cart_items = []
     if cart_data:
         try:
             cart_items = json.loads(cart_data)
-        except:
+        except Exception:
             cart_items = []
-    else:
-        cart_items = []
-    
-    # Mock pending orders (from session)
-    pending_orders = []
-    shipped_orders = []
-    
-    if 'orders' in session:
-        for order in session['orders']:
-            if order.get('status') == 'pending':
-                pending_orders.append(order)
-            elif order.get('shipping_status') in ['shipped', 'delivered']:
-                shipped_orders.append(order)
-    
-    # Add some mock shipped orders for demo
-    if not shipped_orders:
-        shipped_orders = [
-            {
-                'id': 'ship1',
-                'order_number': 'ORD123456',
-                'created_at': datetime.now(),
-                'shipping_status': 'shipped',
-                'tracking_number': 'JNE001234567890',
-                'shipping_address': 'Jl. Sudirman No. 123, Jakarta Pusat',
-                'total_amount': 150000,
-                'items': [
-                    {'product': {'name': 'Laptop ASUS', 'image': 'laptop.jpg'}, 'quantity': 1},
-                    {'product': {'name': 'Mouse Logitech', 'image': 'mouse.jpg'}, 'quantity': 2}
-                ]
-            },
-            {
-                'id': 'ship2',
-                'order_number': 'ORD123457',
-                'created_at': datetime.now(),
-                'shipping_status': 'delivered',
-                'tracking_number': None,
-                'shipping_address': 'Jl. Thamrin No. 456, Jakarta Selatan',
-                'total_amount': 75000,
-                'items': [
-                    {'product': {'name': 'Keyboard Mechanical', 'image': 'keyboard.jpg'}, 'quantity': 1}
-                ]
-            }
-        ]
-    
-    # Calculate totals
-    subtotal = sum(item['price'] * item['quantity'] for item in cart_items) if cart_items else 0
-    service_fee = subtotal * 0.02
+    elif product_id:
+        prod = Product.query.get(product_id)
+        if prod:
+            cart_items = [{
+                'id': prod.id,
+                'name': prod.name,
+                'price': int(prod.price),
+                'quantity': max(1, quantity),
+                'category': prod.category
+            }]
+
+    # Fallback if empty: take first active product so page is immediately functional
+    if not cart_items:
+        first_prod = Product.query.first()
+        if first_prod:
+            cart_items = [{
+                'id': first_prod.id,
+                'name': first_prod.name,
+                'price': int(first_prod.price),
+                'quantity': 1,
+                'category': first_prod.category
+            }]
+
+    subtotal = sum(item.get('price', 0) * item.get('quantity', 1) for item in cart_items)
+    service_fee = 0  # no service fee for now
     total_amount = subtotal + service_fee
-    
-    return render_template('user/checkout.html', 
-                         order_items=cart_items,
-                         subtotal=subtotal,
-                         service_fee=service_fee,
-                         total_amount=total_amount,
-                         pending_orders=pending_orders,
-                         shipped_orders=shipped_orders)
 
-@user_bp.route('/api/qris/generate', methods=['POST'])
+    return render_template(
+        'user/checkout.html',
+        order_items=cart_items,
+        subtotal=subtotal,
+        service_fee=service_fee,
+        total_amount=total_amount,
+        midtrans_client_key=PaymentConfig.MIDTRANS_CLIENT_KEY,
+        midtrans_is_production=PaymentConfig.MIDTRANS_IS_PRODUCTION
+    )
+
+
+@user_bp.route('/api/payment/create', methods=['POST'])
 @login_required
-def generate_qris():
-    """Generate QRIS code for payment using API"""
-    try:
-        # Initialize QRIS service
-        qris_service = QRIService()
-        
-        # Get amount from request
-        amount = request.json.get('amount', 0)
-        
-        # Generate QR code
-        qr_data = qris_service.generate_qr_code(amount)
-        
-        # Store transaction data in session
-        if 'qris_transactions' not in session:
-            session['qris_transactions'] = {}
-        
-        session['qris_transactions'][qr_data['transaction_id']] = {
-            'transaction_id': qr_data['transaction_id'],
-            'amount': qr_data['amount'],
-            'merchant_name': qr_data['merchant_name'],
-            'created_at': qr_data['created_at'].isoformat(),
-            'status': 'pending',
-            'qr_filename': qr_data['qr_filename']
-        }
-        
-        return jsonify({
-            'success': True,
-            'data': qr_data
+def create_payment():
+    """
+    Create a Midtrans charge (QRIS or Bank Transfer).
+    Expected JSON body:
+      {
+        "payment_method": "qris" | "bank_transfer",
+        "bank": "bca" | "bni" | "bri" | "mandiri",  # only for bank_transfer
+        "customer_name": "John Doe",
+        "customer_phone": "08123456789",
+        "customer_email": "john@example.com",
+        "items": [{"id":1,"quantity":2}]  # price is intentionally ignored from client
+      }
+    NOTE: 'amount' and item 'price' from client are IGNORED.
+    Server recomputes authoritative totals from database to prevent price tampering.
+    """
+    data = request.get_json(silent=True) or {}
+
+    payment_method = data.get('payment_method', 'qris')
+    customer_name = data.get('customer_name', current_user.username)
+    customer_phone = data.get('customer_phone', '08000000000')
+    customer_email = data.get('customer_email', current_user.email or 'customer@nexventory.com')
+    raw_items = data.get('items', [])
+
+    if not raw_items:
+        return jsonify({'success': False, 'error': 'Item pesanan tidak boleh kosong'}), 400
+
+    if payment_method not in PaymentConfig.SUPPORTED_PAYMENT_METHODS:
+        return jsonify({'success': False, 'error': 'Metode pembayaran tidak didukung'}), 400
+
+    # --- Server-side price & stock validation ---
+    # Never trust client-supplied price. Recompute from DB.
+    validated_items = []
+    server_total = 0
+    for raw_item in raw_items:
+        prod_id = raw_item.get('id')
+        if not prod_id:
+            return jsonify({'success': False, 'error': 'ID produk tidak valid'}), 400
+
+        prod = Product.query.get(prod_id)
+        if not prod:
+            return jsonify({'success': False, 'error': f'Produk dengan ID {prod_id} tidak ditemukan'}), 400
+
+        qty = int(raw_item.get('quantity', 1))
+        if qty < 1:
+            return jsonify({'success': False, 'error': f'Jumlah untuk produk "{prod.name}" tidak valid'}), 400
+
+        if prod.stock < qty:
+            return jsonify({
+                'success': False,
+                'error': f'Stok produk "{prod.name}" tidak mencukupi (tersedia: {prod.stock}, diminta: {qty})'
+            }), 400
+
+        item_total = int(prod.price) * qty
+        server_total += item_total
+        validated_items.append({
+            'id': prod.id,
+            'name': prod.name,
+            'price': int(prod.price),  # authoritative price from DB
+            'quantity': qty,
+            'category': prod.category,
         })
-        
+
+    if server_total <= 0:
+        return jsonify({'success': False, 'error': 'Jumlah pembayaran tidak valid'}), 400
+
+    try:
+        svc = MidtransService()
+
+        if payment_method == 'qris':
+            result = svc.create_qris_charge(
+                amount=server_total,
+                customer_name=customer_name,
+                customer_email=customer_email,
+                customer_phone=customer_phone,
+                items=validated_items
+            )
+
+            _save_order_transactions(
+                user_id=current_user.id,
+                order_id=result['order_id'],
+                txn_id=result.get('transaction_id'),
+                payment_method='qris',
+                validated_items=validated_items,
+                qr_string=result.get('qr_string')
+            )
+
+            return jsonify({
+                'success': True,
+                'payment_method': 'qris',
+                'order_id': result['order_id'],
+                'transaction_id': result['transaction_id'],
+                'qr_string': result['qr_string'],
+                'qr_url': result.get('qr_url', ''),
+                'amount': result['amount'],
+                'expiry_time': result.get('expiry_time', '')
+            })
+
+        elif payment_method == 'bank_transfer':
+            bank = data.get('bank', 'bca').lower()
+            result = svc.create_bank_transfer_charge(
+                bank=bank,
+                amount=server_total,
+                customer_name=customer_name,
+                customer_email=customer_email,
+                customer_phone=customer_phone,
+                items=validated_items
+            )
+
+            _save_order_transactions(
+                user_id=current_user.id,
+                order_id=result['order_id'],
+                txn_id=result.get('transaction_id'),
+                payment_method='bank_transfer',
+                validated_items=validated_items,
+                va_number=result.get('va_number'),
+                va_bank=result.get('va_bank')
+            )
+
+            return jsonify({
+                'success': True,
+                'payment_method': 'bank_transfer',
+                'order_id': result['order_id'],
+                'transaction_id': result['transaction_id'],
+                'va_number': result['va_number'],
+                'va_bank': result['va_bank'],
+                'amount': result['amount'],
+                'expiry_time': result.get('expiry_time', '')
+            })
+
     except ValueError as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 400
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        logger.error(f"Payment creation error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-@user_bp.route('/api/payment-gateway/generate', methods=['POST'])
-@login_required
-def generate_payment_gateway_qr():
-    """Generate QR code using external payment gateway API (Midtrans/Xendit)"""
-    import uuid
-    import qrcode
-    import io
-    import base64
-    import requests
-    
-    try:
-        # Generate unique transaction ID
-        transaction_id = str(uuid.uuid4())
-        amount = request.json.get('amount', 0)
-        gateway = request.json.get('gateway', 'midtrans')  # midtrans, xendit
-        
-        if amount <= 0:
-            return jsonify({
-                'success': False,
-                'error': 'Amount must be greater than 0'
-            }), 400
-        
-        # Mock payment gateway API call
-        # In production, replace with actual Midtrans/Xendit API calls
-        
-        if gateway == 'midtrans':
-            # Midtrans API integration (mock)
-            gateway_response = {
-                'transaction_id': transaction_id,
-                'order_id': f'ORDER-{transaction_id[:8]}',
-                'gross_amount': amount,
-                'payment_type': 'qris',
-                'status': 'pending',
-                'qr_url': f'https://api.sandbox.midtrans.com/v2/qris/{transaction_id}',
-                'expiry_time': 600
-            }
-        elif gateway == 'xendit':
-            # Xendit API integration (mock)
-            gateway_response = {
-                'id': transaction_id,
-                'external_id': f'nexventory-{transaction_id[:8]}',
-                'amount': amount,
-                'status': 'PENDING',
-                'qr_code': f'https://api.xendit.co/qrcode/{transaction_id}',
-                'expires_at': datetime.now().timestamp() + 600
-            }
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Unsupported payment gateway'
-            }), 400
-        
-        # Generate QR code with gateway data
-        qr_data = f"qris://payment?gateway={gateway}&transaction_id={transaction_id}&amount={amount}"
-        
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(qr_data)
-        qr.make(fit=True)
-        
-        img = qr.make_image(fill_color="black", back_color="white")
-        
-        # Convert to base64
-        img_buffer = io.BytesIO()
-        img.save(img_buffer, format='PNG')
-        img_buffer.seek(0)
-        img_base64 = base64.b64encode(img_buffer.getvalue()).decode()
-        
-        # Save QR code
-        static_folder = current_app.static_folder
-        qr_dir = os.path.join(static_folder, 'qris')
-        if not os.path.exists(qr_dir):
-            os.makedirs(qr_dir)
-        
-        qr_filename = f"qris-{gateway}-{transaction_id}.png"
-        qr_path = os.path.join(qr_dir, qr_filename)
-        img.save(qr_path)
-        
-        # Store transaction data
-        if 'gateway_transactions' not in session:
-            session['gateway_transactions'] = {}
-        
-        session['gateway_transactions'][transaction_id] = {
-            'transaction_id': transaction_id,
-            'gateway': gateway,
-            'amount': amount,
-            'gateway_response': gateway_response,
-            'created_at': datetime.now().isoformat(),
-            'status': 'pending',
-            'qr_filename': qr_filename
-        }
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'transaction_id': transaction_id,
-                'gateway': gateway,
-                'amount': amount,
-                'gateway_response': gateway_response,
-                'qrcode_url': f'/static/qris/{qr_filename}',
-                'qr_base64': img_base64,
-                'expiry_time': 600
-            }
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
-@user_bp.route('/api/qris/check-status/<transaction_id>', methods=['GET'])
-@login_required
-def check_qris_status(transaction_id):
-    """Check QRIS payment status"""
+def _save_order_transactions(
+    user_id, order_id, txn_id, payment_method, validated_items,
+    va_number=None, va_bank=None, qr_string=None
+):
+    """
+    Record transactions in database for a Midtrans order.
+    Only accepts pre-validated items (product existence + stock confirmed
+    by create_payment). Uses DB-authoritative price — never client price.
+    """
     try:
-        # Initialize QRIS service
-        qris_service = QRIService()
-        
-        # Get transaction from session
-        if 'qris_transactions' not in session or transaction_id not in session['qris_transactions']:
-            return jsonify({
-                'success': False,
-                'error': 'Transaction not found'
-            }), 404
-        
-        transaction = session['qris_transactions'][transaction_id]
-        
-        # Validate transaction data
-        if not qris_service.validate_transaction(transaction):
-            return jsonify({
-                'success': False,
-                'error': 'Invalid transaction data'
-            }), 400
-        
-        # Parse created_at datetime
-        created_at = datetime.fromisoformat(transaction['created_at'])
-        
-        # Check payment status
-        status_data = qris_service.check_payment_status(transaction_id, created_at)
-        
-        # Update transaction status in session
-        transaction['status'] = status_data['status']
-        
-        return jsonify({
-            'success': True,
-            **status_data
-        })
-        
+        for item in validated_items:
+            prod_id = item['id']  # guaranteed valid by create_payment guard
+            qty = item['quantity']
+            # Re-fetch from DB to use authoritative price (double-check)
+            prod = Product.query.get(prod_id)
+            if not prod:
+                logger.error(f"Product {prod_id} disappeared between validation and save — skipping")
+                continue
+            item_total = float(prod.price) * qty
+            txn = Transaction(
+                product_id=prod.id,
+                user_id=user_id,
+                quantity=qty,
+                total_price=item_total,
+                transaction_type='purchase',
+                payment_method=payment_method,
+                payment_status='pending',
+                midtrans_order_id=order_id,
+                midtrans_transaction_id=txn_id,
+                va_number=va_number,
+                va_bank=va_bank,
+                qris_string=qr_string
+            )
+            db.session.add(txn)
+        db.session.commit()
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        logger.error(f"Error saving order transactions: {e}")
+        db.session.rollback()
+
+
+@user_bp.route('/api/payment/status/<order_id>', methods=['GET'])
+@login_required
+def check_payment_status(order_id):
+    """Poll Midtrans for payment status and sync with local database"""
+    try:
+        svc = MidtransService()
+        result = svc.check_status(order_id)
+
+        # Synchronize local database
+        txns = Transaction.query.filter_by(midtrans_order_id=order_id).all()
+        if result.get('is_paid'):
+            for txn in txns:
+                if txn.payment_status not in ('settlement', 'capture'):
+                    txn.payment_status = 'settlement'
+                    txn.paid_at = datetime.utcnow()
+                    if txn.product and txn.product.stock >= txn.quantity:
+                        txn.product.stock -= txn.quantity
+            db.session.commit()
+        elif result.get('status') in ('expire', 'cancel', 'failure', 'deny'):
+            for txn in txns:
+                txn.payment_status = result.get('status')
+            db.session.commit()
+
+        return jsonify({'success': True, **result})
+    except Exception as e:
+        logger.error(f"Status check error for {order_id}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/api/payment/cancel/<order_id>', methods=['POST'])
+@login_required
+def cancel_payment(order_id):
+    """Cancel a pending Midtrans transaction"""
+    try:
+        svc = MidtransService()
+        result = svc.cancel_transaction(order_id)
+        txns = Transaction.query.filter_by(midtrans_order_id=order_id).all()
+        for txn in txns:
+            txn.payment_status = 'cancel'
+        db.session.commit()
+        return jsonify({'success': True, **result})
+    except Exception as e:
+        logger.error(f"Cancel payment error for {order_id}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@user_bp.route('/payment/callback', methods=['POST'])
+def payment_callback():
+    """
+    Midtrans server-to-server notification webhook.
+    Midtrans posts JSON here when payment status changes.
+    """
+    try:
+        notification = request.get_json(silent=True) or {}
+
+        order_id = notification.get('order_id', '')
+        status_code = notification.get('status_code', '')
+        gross_amount = notification.get('gross_amount', '')
+        signature_key = notification.get('signature_key', '')
+        transaction_status = notification.get('transaction_status', '')
+        fraud_status = notification.get('fraud_status', '')
+        payment_type = notification.get('payment_type', '')
+
+        # Verify signature
+        svc = MidtransService()
+        if not svc.verify_webhook_signature(order_id, status_code, gross_amount, signature_key):
+            logger.warning(f"Invalid webhook signature for order {order_id}")
+            return jsonify({'status': 'invalid signature'}), 403
+
+        logger.info(f"Midtrans webhook: order={order_id} status={transaction_status} payment={payment_type}")
+
+        # Find transactions by midtrans_order_id
+        txns = Transaction.query.filter_by(midtrans_order_id=order_id).all()
+        for txn in txns:
+            txn.payment_status = transaction_status
+            if PaymentConfig.is_paid_status(transaction_status):
+                if fraud_status in ('accept', '') or not fraud_status:
+                    if not txn.paid_at:
+                        txn.paid_at = datetime.utcnow()
+                        if txn.product and txn.product.stock >= txn.quantity:
+                            txn.product.stock -= txn.quantity
+        db.session.commit()
+
+        return jsonify({'status': 'ok'}), 200
+
+    except Exception as e:
+        logger.error(f"Webhook processing error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@user_bp.route('/payment/finish')
+@login_required
+def payment_finish():
+    """Redirect target after Midtrans Snap payment completes"""
+    order_id = request.args.get('order_id', '')
+    status = request.args.get('transaction_status', 'pending')
+    return render_template('user/payment_finish.html', order_id=order_id, status=status)
 
 @user_bp.route('/beli-produk')
 @login_required
 def beli_produk():
     # Get all products from all sellers for user to buy
-    products = Product.query.filter_by(status='active').order_by(Product.created_at.desc()).all()
+    products = Product.query.filter(Product.stock > 0).order_by(Product.created_at.desc()).all()
+
     
     # Add seller name to each product (mock data for now)
     for product in products:
@@ -782,6 +761,12 @@ def tambah_jualan():
 @login_required
 def edit_jualan(trans_id):
     transaction = Transaction.query.get_or_404(trans_id)
+
+    # --- IDOR / BOLA Guard ---
+    # Only the owner or an admin can modify this transaction
+    if transaction.user_id != current_user.id and not current_user.is_admin:
+        abort(403)
+
     product = Product.query.get(transaction.product_id)
 
     if request.method == 'POST':
@@ -824,6 +809,12 @@ def edit_jualan(trans_id):
 @login_required
 def hapus_jualan(trans_id):
     transaction = Transaction.query.get_or_404(trans_id)
+
+    # --- IDOR / BOLA Guard ---
+    # Only the owner or an admin can delete this transaction
+    if transaction.user_id != current_user.id and not current_user.is_admin:
+        abort(403)
+
     product = Product.query.get(transaction.product_id)
 
     try:

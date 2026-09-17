@@ -77,6 +77,8 @@ def login():
             # Set session data for compatibility
             session['user_id'] = user.id
             session['role'] = user.role
+            session['is_admin'] = (user.role == 'admin')
+
             
             flash('Login berhasil!', 'success')
             

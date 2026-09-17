@@ -105,7 +105,7 @@
                                 {{ product.category }}
                             </span>
                         </td>
-                        <td class="py-3.5 px-4 text-right font-medium text-white">
+                        <td class="py-3.5 px-4 text-right font-medium text-white tabular-nums">
                             Rp {{ "{:,.0f}".format(product.price) }}
                         </td>
                         <td class="py-3.5 px-4">
@@ -115,21 +115,23 @@
                                     <div class="h-full rounded-full {% if product.stock <= product.min_stock %}bg-amber-500{% else %}bg-emerald-500{% endif %}" 
                                          style="width: {{ [percentage, 100]|min }}%"></div>
                                 </div>
-                                <span class="font-bold {% if product.stock <= product.min_stock %}text-amber-400{% else %}text-emerald-400{% endif %}">
+                                <span class="font-bold tabular-nums {% if product.stock <= product.min_stock %}text-amber-400{% else %}text-emerald-400{% endif %}">
                                     {{ product.stock }}
                                 </span>
-                                <span class="text-slate-500 text-[10px]">/ min {{ product.min_stock }}</span>
+                                <span class="text-slate-500 text-[10px] tabular-nums">/ min {{ product.min_stock }}</span>
                             </div>
                         </td>
                         <td class="py-3.5 px-4 text-right">
-                            <div class="flex items-center justify-end gap-1.5">
+                            <div class="flex items-center justify-end gap-2">
                                 <a href="{{ url_for('user.edit_product', product_id=product.id) }}" 
-                                   class="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 flex items-center justify-center transition-colors" title="Edit SKU">
-                                    <i class="fa-solid fa-pen-to-square text-[11px]"></i>
+                                   aria-label="Edit SKU {{ product.name }}"
+                                   class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 flex items-center justify-center transition-colors" title="Edit SKU">
+                                    <i class="fa-solid fa-pen-to-square text-xs" aria-hidden="true"></i>
                                 </a>
                                 <button type="button" onclick="confirmDelete('{{ product.id }}', '{{ product.name|replace('\'', '\\\'') }}')" 
-                                        class="w-7 h-7 rounded bg-slate-800 hover:bg-rose-950/60 text-slate-400 hover:text-rose-400 border border-slate-700 hover:border-rose-800 flex items-center justify-center transition-colors" title="Decommission SKU">
-                                    <i class="fa-solid fa-trash-can text-[11px]"></i>
+                                        aria-label="Decommission SKU {{ product.name }}"
+                                        class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-lg bg-slate-800 hover:bg-rose-950/60 text-slate-400 hover:text-rose-400 border border-slate-700 hover:border-rose-800 flex items-center justify-center transition-colors" title="Decommission SKU">
+                                    <i class="fa-solid fa-trash-can text-xs" aria-hidden="true"></i>
                                 </button>
                             </div>
                         </td>
@@ -161,8 +163,8 @@
                 </h3>
                 <p class="text-xs font-mono text-slate-400 mt-0.5">Add asset specification to active inventory pool.</p>
             </div>
-            <button onclick="closeAddModal()" class="text-slate-400 hover:text-white text-lg">
-                <i class="fa-solid fa-xmark"></i>
+            <button onclick="closeAddModal()" aria-label="Close modal" class="w-10 h-10 min-w-[40px] min-h-[40px] rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-xmark text-lg" aria-hidden="true"></i>
             </button>
         </div>
 

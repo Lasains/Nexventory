@@ -1,1020 +1,871 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout - Nexventory</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/checkout.css') }}">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- QR Code Library -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-</head>
-<body>
-    <!-- Sidebar Navigation -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <h2><i class="fas fa-box"></i> Nexventory</h2>
-            <p class="user-name">{{ current_user.username }}</p>
-        </div>
-        
-        <nav class="sidebar-nav">
-            <a href="{{ url_for('user.dashboard') }}" class="nav-item">
-                <i class="fas fa-tachometer-alt"></i> Dashboard
-            </a>
-            <a href="{{ url_for('user.manage_produk') }}" class="nav-item">
-                <i class="fas fa-boxes"></i> Kelola Produk
-            </a>
-            <a href="{{ url_for('user.manage_jualan') }}" class="nav-item">
-                <i class="fas fa-shopping-cart"></i> Kelola Pembelian
-            </a>
-            <a href="{{ url_for('user.tambah_jualan') }}" class="nav-item">
-                <i class="fas fa-plus-circle"></i> Tambah Pembelian
-            </a>
-            <a href="{{ url_for('user.transaction') }}" class="nav-item">
-                <i class="fas fa-receipt"></i> Riwayat Transaksi
-            </a>
-            <a href="{{ url_for('user.manage_akun') }}" class="nav-item">
-                <i class="fas fa-user-cog"></i> Kelola Akun
-            </a>
-        </nav>
-        
-        <div class="sidebar-footer">
-            <a href="{{ url_for('auth.logout') }}" class="logout-btn">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
-        </div>
-    </div>
+{% extends 'base.html' %}
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <header class="top-header">
-            <h1>Checkout</h1>
-            <div class="header-info">
-                <span>Selesaikan pembayaran pesanan Anda</span>
-            </div>
-        </header>
+{% block title %}Checkout — Nexventory{% endblock %}
 
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        <i class="fas fa-{{ 'info-circle' if category == 'info' else 'exclamation-triangle' if category == 'error' else 'check-circle' }}"></i>
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+{% block extra_css %}
+<!-- QR Code generator library -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+{% endblock %}
 
-        <div class="checkout-container">
-            <!-- Pending Orders Section -->
-            <div class="pending-orders-section">
-                <h2><i class="fas fa-clock"></i> Pesanan Belum Dibayar</h2>
-                {% if pending_orders %}
-                    <div class="pending-orders-list">
-                        {% for order in pending_orders %}
-                        <div class="pending-order-card">
-                            <div class="order-header">
-                                <div class="order-info">
-                                    <h4>Order #{{ order.order_number }}</h4>
-                                    <p class="order-date">{{ order.created_at.strftime('%d %B %Y, %H:%M') }}</p>
-                                </div>
-                                <div class="order-status">
-                                    <span class="status-badge pending">Menunggu Pembayaran</span>
-                                </div>
-                            </div>
-                            
-                            <div class="order-items-preview">
-                                {% for item in order.items[:2] %}
-                                <div class="mini-item">
-                                    <img src="{{ url_for('static', filename='uploads/' + item.product.image if item.product.image else 'images/product-placeholder.jpg') }}" 
-                                         alt="{{ item.product.name }}">
-                                    <span>{{ item.quantity }}x</span>
-                                </div>
-                                {% endfor %}
-                                {% if order.items|length > 2 %}
-                                <div class="more-items">
-                                    +{{ order.items|length - 2 }} lagi
-                                </div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="order-footer">
-                                <div class="order-total">
-                                    <span>Total: </span>
-                                    <strong>Rp {{ "%.0f"|format(order.total_amount) }}</strong>
-                                </div>
-                                <div class="order-actions">
-                                    {% if order.payment_method == 'qris' %}
-                                    <button class="btn-primary" onclick="continueQRISPayment('{{ order.id }}')">
-                                        <i class="fas fa-qrcode"></i> Bayar QRIS
-                                    </button>
-                                    {% elif order.payment_method == 'transfer' %}
-                                    <button class="btn-secondary" onclick="showTransferDetails('{{ order.id }}')">
-                                        <i class="fas fa-info-circle"></i> Detail Transfer
-                                    </button>
-                                    {% endif %}
-                                    <button class="btn-outline" onclick="cancelOrder('{{ order.id }}')">
-                                        <i class="fas fa-times"></i> Batal
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="no-pending-orders">
-                        <i class="fas fa-check-circle"></i>
-                        <p>Tidak ada pesanan yang menunggu pembayaran</p>
-                    </div>
-                {% endif %}
+{% block page_title %}
+<span class="inline-flex items-center gap-2.5">
+    <span class="w-8 h-8 rounded-lg bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400">
+        <i class="fa-solid fa-credit-card text-sm" aria-hidden="true"></i>
+    </span>
+    Checkout &amp; Pembayaran
+</span>
+{% endblock %}
+
+{% block page_subtitle %}
+Pilih kanal pembayaran digital dan selesaikan transaksi pengadaan barang Anda.
+{% endblock %}
+
+{% block header_actions %}
+<a href="javascript:history.back()" 
+   aria-label="Kembali ke halaman sebelumnya"
+   class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 hover:border-slate-700 transition-all min-h-[40px]">
+    <i class="fa-solid fa-arrow-left text-xs" aria-hidden="true"></i>
+    <span>Kembali</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-7xl mx-auto">
+
+    <!-- Progress Stepper -->
+    <nav aria-label="Progress Pembayaran" class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 backdrop-blur-sm">
+        <div class="flex items-center justify-center max-w-md mx-auto">
+            <!-- Step 1 -->
+            <div class="flex items-center gap-2 text-emerald-400">
+                <div class="w-8 h-8 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-xs font-bold font-mono">
+                    <i class="fa-solid fa-check text-xs" aria-hidden="true"></i>
+                </div>
+                <span class="text-xs font-semibold hidden sm:inline">Keranjang</span>
             </div>
 
-            <!-- Order Summary -->
-            <div class="order-summary">
-                <h2><i class="fas fa-shopping-cart"></i> Ringkasan Pesanan</h2>
-                <div class="cart-items" id="cartItems">
+            <div class="flex-1 h-0.5 mx-3 bg-brand-500/50"></div>
+
+            <!-- Step 2 -->
+            <div class="flex items-center gap-2 text-brand-400" id="step2">
+                <div class="w-8 h-8 rounded-full bg-brand-500/20 border-2 border-brand-500 flex items-center justify-center text-xs font-bold font-mono shadow-md shadow-brand-500/20">
+                    2
+                </div>
+                <span class="text-xs font-bold text-white hidden sm:inline">Pembayaran</span>
+            </div>
+
+            <div class="flex-1 h-0.5 mx-3 bg-slate-800" id="step2-line"></div>
+
+            <!-- Step 3 -->
+            <div class="flex items-center gap-2 text-slate-500" id="step3">
+                <div class="w-8 h-8 rounded-full bg-slate-800/80 border border-slate-700/60 flex items-center justify-center text-xs font-bold font-mono">
+                    3
+                </div>
+                <span class="text-xs font-medium hidden sm:inline">Konfirmasi</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Two-Column Checkout Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- Left Column: Order Summary & Customer Info (5 cols) -->
+        <div class="lg:col-span-5 space-y-6">
+
+            <!-- Order Summary Card -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+                <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
+                    <div class="flex items-center gap-2.5">
+                        <i class="fa-solid fa-receipt text-brand-400 text-sm" aria-hidden="true"></i>
+                        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Ringkasan Pesanan</h2>
+                    </div>
+                    <span class="text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+                        {{ order_items|length if order_items else 0 }} Item
+                    </span>
+                </div>
+
+                <!-- Items List -->
+                <div class="divide-y divide-slate-800/60 max-h-72 overflow-y-auto" id="coItems">
                     {% if order_items %}
                         {% for item in order_items %}
-                        <div class="cart-item">
-                            <div class="item-image">
-                                <img src="{{ url_for('static', filename='images/products/' + item.product.image if item.product.image else 'images/product-placeholder.jpg') }}" 
-                                     alt="{{ item.product.name }}">
+                        <div class="p-4 flex items-center gap-3.5 hover:bg-slate-850/40 transition-colors">
+                            <div class="w-12 h-12 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                {% if item.get('image') %}
+                                <img src="{{ url_for('static', filename='uploads/' + item['image']) }}" 
+                                     alt="{{ item.get('name','Produk') }}" 
+                                     class="w-full h-full object-cover">
+                                {% else %}
+                                <i class="fa-solid fa-box text-slate-600 text-base" aria-hidden="true"></i>
+                                {% endif %}
                             </div>
-                            <div class="item-details">
-                                <h4>{{ item.product.name }}</h4>
-                                <p class="seller-name">
-                                    <i class="fas fa-store"></i> {{ item.product.seller_name }}
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold text-white truncate">{{ item.get('name', 'Produk') }}</p>
+                                <p class="text-xs text-slate-400 font-mono mt-0.5">
+                                    {{ item.get('quantity', 1) }} &times; Rp {{ "{:,.0f}".format(item.get('price', 0)) }}
                                 </p>
-                                <div class="item-meta">
-                                    <span class="quantity">{{ item.quantity }}x</span>
-                                    <span class="price">Rp {{ "%.0f"|format(item.price) }}</span>
-                                </div>
                             </div>
-                            <div class="item-total">
-                                <span>Rp {{ "%.0f"|format(item.price * item.quantity) }}</span>
+                            <div class="text-sm font-mono font-bold text-slate-200 tabular-nums text-right">
+                                Rp {{ "{:,.0f}".format(item.get('price', 0) * item.get('quantity', 1)) }}
                             </div>
                         </div>
                         {% endfor %}
+                    {% else %}
+                        <div class="py-12 text-center text-slate-500">
+                            <i class="fa-solid fa-basket-shopping text-3xl mb-2 block" aria-hidden="true"></i>
+                            <p class="text-sm">Keranjang pesanan kosong</p>
+                        </div>
                     {% endif %}
                 </div>
-                
-                <div class="order-totals">
-                    <div class="total-row">
-                        <span>Subtotal:</span>
-                        <span>Rp {{ "%.0f"|format(subtotal) }}</span>
+
+                <!-- Totals Breakdown -->
+                <div class="p-5 border-t border-slate-800 bg-slate-950/60 space-y-2.5">
+                    <div class="flex justify-between text-xs text-slate-400">
+                        <span>Subtotal Barang</span>
+                        <span class="font-mono text-slate-300 tabular-nums">Rp {{ "{:,.0f}".format(subtotal) }}</span>
                     </div>
-                    <div class="total-row">
-                        <span>Biaya Layanan:</span>
-                        <span>Rp {{ "%.0f"|format(service_fee) }}</span>
+                    {% if service_fee > 0 %}
+                    <div class="flex justify-between text-xs text-slate-400">
+                        <span>Biaya Platform / Layanan</span>
+                        <span class="font-mono text-slate-300 tabular-nums">Rp {{ "{:,.0f}".format(service_fee) }}</span>
                     </div>
-                    <div class="total-row grand-total">
-                        <span>Total:</span>
-                        <span>Rp {{ "%.0f"|format(total_amount) }}</span>
+                    {% endif %}
+                    <div class="pt-3 border-t border-slate-800 flex justify-between items-baseline">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Total Pembayaran</span>
+                            <span class="block text-[11px] text-brand-400/80">Termasuk pajak &amp; biaya</span>
+                        </div>
+                        <strong id="coGrandTotal" class="text-xl font-bold font-mono text-white tracking-tight tabular-nums">
+                            Rp {{ "{:,.0f}".format(total_amount) }}
+                        </strong>
                     </div>
                 </div>
             </div>
 
-            <!-- Payment Section -->
-            <div class="payment-section">
-                <h2><i class="fas fa-credit-card"></i> Metode Pembayaran</h2>
-                
-                <!-- Delivered Orders Section -->
-            <div class="delivered-orders-section">
-                <h2><i class="fas fa-truck"></i> Pesanan Belum Diterima</h2>
-                {% if shipped_orders %}
-                    <div class="shipped-orders-list">
-                        {% for order in shipped_orders %}
-                        <div class="shipped-order-card">
-                            <div class="order-header">
-                                <div class="order-info">
-                                    <h4>Order #{{ order.order_number }}</h4>
-                                    <p class="order-date">{{ order.created_at.strftime('%d %B %Y, %H:%M') }}</p>
-                                </div>
-                                <div class="order-status">
-                                    {% if order.shipping_status == 'shipped' %}
-                                    <span class="status-badge shipped">
-                                        <i class="fas fa-truck"></i> Dalam Pengiriman
-                                    </span>
-                                    {% elif order.shipping_status == 'delivered' %}
-                                    <span class="status-badge delivered">
-                                        <i class="fas fa-check-circle"></i> Siap Diambil
-                                    </span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            
-                            <div class="shipping-info">
-                                <div class="shipping-address">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    <span>{{ order.shipping_address or 'Alamat belum diatur' }}</span>
-                                </div>
-                                {% if order.tracking_number %}
-                                <div class="tracking-info">
-                                    <i class="fas fa-shipping-fast"></i>
-                                    <span>No. Resi: {{ order.tracking_number }}</span>
-                                    <button class="btn-link" onclick="trackOrder('{{ order.tracking_number }}')">
-                                        Lacak
-                                    </button>
-                                </div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="order-items-preview">
-                                {% for item in order.items[:2] %}
-                                <div class="mini-item">
-                                    <img src="{{ url_for('static', filename='uploads/' + item.product.image if item.product.image else 'images/product-placeholder.jpg') }}" 
-                                         alt="{{ item.product.name }}">
-                                    <span>{{ item.quantity }}x</span>
-                                </div>
-                                {% endfor %}
-                                {% if order.items|length > 2 %}
-                                <div class="more-items">
-                                    +{{ order.items|length - 2 }} lagi
-                                </div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="order-footer">
-                                <div class="order-total">
-                                    <span>Total: </span>
-                                    <strong>Rp {{ "%.0f"|format(order.total_amount) }}</strong>
-                                </div>
-                                <div class="order-actions">
-                                    {% if order.shipping_status == 'delivered' %}
-                                    <button class="btn-primary" onclick="confirmDelivery('{{ order.id }}')">
-                                        <i class="fas fa-check"></i> Konfirmasi Diterima
-                                    </button>
-                                    {% endif %}
-                                    <button class="btn-secondary" onclick="viewOrderDetail('{{ order.id }}')">
-                                        <i class="fas fa-eye"></i> Detail
-                                    </button>
-                                    {% if order.shipping_status == 'shipped' %}
-                                    <button class="btn-outline" onclick="contactSupport('{{ order.id }}')">
-                                        <i class="fas fa-headset"></i> Bantuan
-                                    </button>
-                                    {% endif %}
-                                </div>
-                            </div>
+            <!-- Customer Details Card -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+                <div class="px-5 py-4 border-b border-slate-800 flex items-center gap-2.5 bg-slate-950/40">
+                    <i class="fa-solid fa-user-shield text-brand-400 text-sm" aria-hidden="true"></i>
+                    <h2 class="text-sm font-bold text-white uppercase tracking-wider">Identitas Operator Pemesan</h2>
+                </div>
+
+                <div class="p-5 space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="coName" class="block text-xs font-semibold text-slate-300 mb-1.5">
+                                Nama Lengkap <span class="text-rose-400">*</span>
+                            </label>
+                            <input type="text" id="coName" required
+                                   value="{{ current_user.first_name or '' }} {{ current_user.last_name or '' }}"
+                                   placeholder="Nama operator"
+                                   class="w-full px-3.5 py-2.5 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
                         </div>
-                        {% endfor %}
+                        <div>
+                            <label for="coPhone" class="block text-xs font-semibold text-slate-300 mb-1.5">
+                                No. Telepon / WA <span class="text-rose-400">*</span>
+                            </label>
+                            <input type="tel" id="coPhone" required
+                                   placeholder="08123456789"
+                                   class="w-full px-3.5 py-2.5 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors font-mono">
+                        </div>
                     </div>
-                {% else %}
-                    <div class="no-shipped-orders">
-                        <i class="fas fa-box-open"></i>
-                        <p>Tidak ada pesanan dalam pengiriman</p>
+                    <div>
+                        <label for="coEmail" class="block text-xs font-semibold text-slate-300 mb-1.5">
+                            Email Notifikasi
+                        </label>
+                        <input type="email" id="coEmail"
+                               value="{{ current_user.email or '' }}"
+                               placeholder="operator@nexventory.com"
+                               class="w-full px-3.5 py-2.5 text-xs bg-slate-950 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
                     </div>
-                {% endif %}
+                </div>
             </div>
 
-            <!-- Payment Methods -->
-                <div class="payment-methods">
-                    <div class="payment-method active" data-method="qris">
-                        <div class="method-header">
-                            <div class="method-info">
-                                <div class="method-icon qris">
-                                    <i class="fas fa-qrcode"></i>
-                                </div>
-                                <div class="method-details">
-                                    <h3>QRIS</h3>
-                                    <p>Bayar dengan GoPay, OVO, Dana, atau e-wallet lainnya</p>
-                                </div>
-                            </div>
-                            <div class="method-radio">
-                                <input type="radio" name="payment_method" value="qris" checked>
-                            </div>
-                        </div>
+        </div>
+
+        <!-- Right Column: Payment Methods & Displays (7 cols) -->
+        <div class="lg:col-span-7 space-y-6">
+
+            <!-- Payment Method Selector Card -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl" id="paymentSelectorCard">
+                <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
+                    <div class="flex items-center gap-2.5">
+                        <i class="fa-solid fa-wallet text-brand-400 text-sm" aria-hidden="true"></i>
+                        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Metode Pembayaran Digital</h2>
                     </div>
-                    
-                    <div class="payment-method" data-method="transfer">
-                        <div class="method-header">
-                            <div class="method-info">
-                                <div class="method-icon transfer">
-                                    <i class="fas fa-university"></i>
-                                </div>
-                                <div class="method-details">
-                                    <h3>Transfer Bank</h3>
-                                    <p>Transfer ke rekening bank</p>
-                                </div>
-                            </div>
-                            <div class="method-radio">
-                                <input type="radio" name="payment_method" value="transfer">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="payment-method" data-method="cod">
-                        <div class="method-header">
-                            <div class="method-info">
-                                <div class="method-icon cod">
-                                    <i class="fas fa-hand-holding-usd"></i>
-                                </div>
-                                <div class="method-details">
-                                    <h3>Cash on Delivery</h3>
-                                    <p>Bayar saat barang sampai</p>
-                                </div>
-                            </div>
-                            <div class="method-radio">
-                                <input type="radio" name="payment_method" value="cod">
-                            </div>
-                        </div>
-                    </div>
+                    <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+                        256-BIT ENCRYPTED
+                    </span>
                 </div>
 
-                <!-- QRIS Payment -->
-                <div class="qris-payment" id="qrisPayment" style="display: none;">
-                    <div class="qris-header">
-                        <h3><i class="fas fa-qrcode"></i> Scan QRIS</h3>
-                        <p>Scan kode QR dengan aplikasi GoPay atau e-wallet lainnya</p>
-                    </div>
-                    
-                    <div class="qris-content">
-                        <div class="qrcode-container">
-                            <div class="qrcode" id="qrcode">
-                                <div class="qrcode-loading">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                    <p>Membuat QR Code...</p>
-                                </div>
-                                <div id="qrcodeCanvas"></div>
-                            </div>
-                            <div class="qrcode-info">
-                                <p class="amount" id="qrisAmount">Rp 0</p>
-                                <p class="merchant">Nexventory Store</p>
-                                <p class="expiry" id="qrisExpiry">Berlaku 10 menit</p>
-                                <div class="payment-status" id="paymentStatus">
-                                    <span class="status-pending">Menunggu Pembayaran</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="payment-steps">
-                            <h4>Cara Pembayaran:</h4>
-                            <ol>
-                                <li>Buka aplikasi GoPay atau e-wallet lainnya</li>
-                                <li>Pilih menu "Scan QR" atau "Bayar"</li>
-                                <li>Scan kode QR di atas</li>
-                                <li>Konfirmasi pembayaran</li>
-                                <li>Masukkan PIN jika diperlukan</li>
-                            </ol>
-                        </div>
-                        
-                        <div class="supported-wallets">
-                            <h4>E-Wallet Didukung:</h4>
-                            <div class="wallet-list">
-                                <div class="wallet-item">
-                                    <i class="fas fa-check-circle text-success"></i>
-                                    <span>GoPay</span>
-                                </div>
-                                <div class="wallet-item">
-                                    <i class="fas fa-check-circle text-success"></i>
-                                    <span>OVO</span>
-                                </div>
-                                <div class="wallet-item">
-                                    <i class="fas fa-check-circle text-success"></i>
-                                    <span>Dana</span>
-                                </div>
-                                <div class="wallet-item">
-                                    <i class="fas fa-check-circle text-success"></i>
-                                    <span>ShopeePay</span>
-                                </div>
-                                <div class="wallet-item">
-                                    <i class="fas fa-check-circle text-success"></i>
-                                    <span>LinkAja</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <div class="p-5 space-y-4">
+                    <!-- Method Options Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="coMethods">
 
-                <!-- Bank Transfer Payment -->
-                <div class="transfer-payment" id="transferPayment" style="display: none;">
-                    <div class="bank-details">
-                        <h4>Detail Transfer Bank:</h4>
-                        <div class="bank-info">
-                            <div class="bank-item">
-                                <label>Bank:</label>
-                                <span>BCA</span>
+                        <!-- QRIS Option -->
+                        <div class="co-method cursor-pointer p-4 rounded-xl border border-brand-500 bg-brand-500/10 relative transition-all" 
+                             data-method="qris" id="methodQris" role="radio" aria-checked="true" tabindex="0">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="w-10 h-10 rounded-lg bg-slate-950 border border-brand-500/30 flex items-center justify-center text-brand-400">
+                                    <i class="fa-solid fa-qrcode text-lg" aria-hidden="true"></i>
+                                </div>
+                                <span class="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                    Instant
+                                </span>
                             </div>
-                            <div class="bank-item">
-                                <label>No. Rekening:</label>
-                                <span>1234567890</span>
-                            </div>
-                            <div class="bank-item">
-                                <label>Atas Nama:</label>
-                                <span>Nexventory Store</span>
-                            </div>
-                            <div class="bank-item">
-                                <label>Jumlah:</label>
-                                <span class="amount">Rp {{ "%.0f"|format(total_amount) }}</span>
+                            <div class="font-bold text-white text-sm">QRIS Standard</div>
+                            <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                                GoPay, OVO, Dana, ShopeePay, LinkAja &amp; Mobile Banking
+                            </p>
+                            <div class="mt-3 flex items-center gap-1.5 text-[11px] font-mono font-semibold text-brand-400">
+                                <i class="fa-solid fa-circle-check text-xs" aria-hidden="true"></i> Verifikasi Real-time
                             </div>
                         </div>
-                        <div class="transfer-instructions">
-                            <p>Silakan transfer ke rekening di atas dan upload bukti transfer</p>
+
+                        <!-- Bank Transfer Option -->
+                        <div class="co-method cursor-pointer p-4 rounded-xl border border-slate-800 bg-slate-950/40 hover:border-slate-700 relative transition-all" 
+                             data-method="bank_transfer" id="methodBank" role="radio" aria-checked="false" tabindex="0">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="w-10 h-10 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center text-sky-400">
+                                    <i class="fa-solid fa-building-columns text-lg" aria-hidden="true"></i>
+                                </div>
+                                <span class="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                                    VA 24 Jam
+                                </span>
+                            </div>
+                            <div class="font-bold text-white text-sm">Virtual Account (VA)</div>
+                            <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                                Transfer via BCA, BNI, BRI, atau Bank Mandiri
+                            </p>
+                            <div class="mt-3 flex items-center gap-1.5 text-[11px] font-mono font-semibold text-slate-500">
+                                <i class="fa-solid fa-circle text-[8px]" aria-hidden="true"></i> Otomatis Cek Mutasi
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Bank selector sub-panel (visible when Bank Transfer selected) -->
+                    <div id="panelBank" class="pt-3 border-t border-slate-800/80 space-y-2.5 hidden">
+                        <label class="block text-xs font-semibold text-slate-300">Pilih Rekening Bank Virtual:</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5" id="coBanks">
+                            <button type="button" data-bank="bca" class="co-bank p-2.5 rounded-lg bg-brand-500/10 border border-brand-500 text-center transition-all min-h-[44px]">
+                                <span class="block font-mono font-bold text-white text-xs">BCA</span>
+                                <span class="text-[10px] text-brand-400">Bank BCA</span>
+                            </button>
+                            <button type="button" data-bank="bni" class="co-bank p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 text-center transition-all min-h-[44px]">
+                                <span class="block font-mono font-bold text-white text-xs">BNI</span>
+                                <span class="text-[10px] text-slate-400">Bank BNI</span>
+                            </button>
+                            <button type="button" data-bank="bri" class="co-bank p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 text-center transition-all min-h-[44px]">
+                                <span class="block font-mono font-bold text-white text-xs">BRI</span>
+                                <span class="text-[10px] text-slate-400">Bank BRI</span>
+                            </button>
+                            <button type="button" data-bank="mandiri" class="co-bank p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 text-center transition-all min-h-[44px]">
+                                <span class="block font-mono font-bold text-white text-xs">MANDIRI</span>
+                                <span class="text-[10px] text-slate-400">Mandiri VA</span>
+                            </button>
                         </div>
                     </div>
-                </div>
 
-                <!-- COD Payment -->
-                <div class="cod-payment" id="codPayment" style="display: none;">
-                    <div class="cod-info">
-                        <h4>Cash on Delivery</h4>
-                        <p>Bayar tunai saat barang sampai ke lokasi Anda</p>
-                        <div class="cod-features">
-                            <div class="feature-item">
-                                <i class="fas fa-check text-success"></i>
-                                <span>Pembayaran aman saat barang diterima</span>
-                            </div>
-                            <div class="feature-item">
-                                <i class="fas fa-check text-success"></i>
-                                <span>Tidak perlu transfer di muka</span>
-                            </div>
-                            <div class="feature-item">
-                                <i class="fas fa-check text-success"></i>
-                                <span>Bisa cek barang sebelum bayar</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Customer Information -->
-                <div class="customer-info">
-                    <h3><i class="fas fa-user"></i> Informasi Pembeli</h3>
-                    <form id="checkoutForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="customer_name">Nama Lengkap *</label>
-                                <input type="text" id="customer_name" name="customer_name" value="{{ current_user.first_name or '' }} {{ current_user.last_name or '' }}" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="customer_phone">No. HP *</label>
-                                <input type="tel" id="customer_phone" name="customer_phone" placeholder="08xxxxxxxxxx" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="customer_address">Alamat Pengiriman *</label>
-                            <textarea id="customer_address" name="customer_address" rows="3" placeholder="Masukkan alamat lengkap pengiriman" required></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="customer_notes">Catatan (Opsional)</label>
-                            <textarea id="customer_notes" name="customer_notes" rows="2" placeholder="Catatan khusus untuk pesanan Anda"></textarea>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Checkout Actions -->
-                <div class="checkout-actions">
-                    <a href="{{ url_for('user.browse_products') }}" class="btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Kembali Belanja
-                    </a>
-                    <button class="btn-primary" onclick="processPayment()" id="payButton">
-                        <i class="fas fa-credit-card"></i> Bayar Sekarang
+                    <!-- Pay Button CTA -->
+                    <button type="button" id="coPayBtn" onclick="initPayment()"
+                            class="w-full min-h-[48px] py-3 px-6 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-slate-950 font-bold text-sm tracking-wide shadow-lg shadow-brand-500/25 active:scale-[0.99] transition-all flex items-center justify-center gap-2.5">
+                        <span id="coPayBtnText" class="flex items-center gap-2">
+                            <i class="fa-solid fa-lock text-xs" aria-hidden="true"></i>
+                            <span>Bayar Sekarang &bull; Rp <span id="coPayAmount" class="font-mono tabular-nums">{{ "{:,.0f}".format(total_amount) }}</span></span>
+                        </span>
                     </button>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Payment Success Modal -->
-    <div id="paymentSuccessModal" class="modal">
-        <div class="modal-content success">
-            <div class="modal-header">
-                <h3><i class="fas fa-check-circle"></i> Pembayaran Berhasil</h3>
-            </div>
-            <div class="modal-body">
-                <div class="success-content">
-                    <div class="success-icon">
-                        <i class="fas fa-check-circle"></i>
+            <!-- ═══ QRIS Payment Display Panel ═══ -->
+            <div id="coQrisDisplay" class="bg-slate-900/80 border border-brand-500/40 rounded-xl overflow-hidden shadow-2xl hidden">
+                <div class="px-5 py-4 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-qrcode text-brand-400" aria-hidden="true"></i>
+                        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Scan Kode QRIS</h2>
                     </div>
-                    <h4>Terima kasih! Pembayaran Anda telah berhasil.</h4>
-                    <p>Pesanan Anda sedang diproses dan akan segera dikirim.</p>
-                    <div class="order-info">
-                        <p><strong>No. Pesanan:</strong> #<span id="orderNumber">12345</span></p>
-                        <p><strong>Total Pembayaran:</strong> Rp {{ "%.0f"|format(total_amount) }}</p>
+                    <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 font-mono text-xs font-bold text-amber-400" id="coTimer">
+                        <i class="fa-solid fa-clock text-xs" aria-hidden="true"></i>
+                        <span id="coTimerText">10:00</span>
+                    </div>
+                </div>
+
+                <div class="p-6 text-center space-y-5">
+                    <!-- QR Frame Container -->
+                    <div class="inline-block p-4 bg-white rounded-2xl shadow-xl mx-auto">
+                        <div id="coQrLoading" class="w-[220px] h-[220px] flex flex-col items-center justify-center text-slate-600">
+                            <i class="fa-solid fa-circle-notch fa-spin text-2xl text-brand-500 mb-2" aria-hidden="true"></i>
+                            <span class="text-xs font-semibold">Memuat Kode QR…</span>
+                        </div>
+                        <div id="coQrCanvas" class="hidden"></div>
+                        <img id="coQrImg" src="" alt="QRIS Code" class="hidden w-[220px] h-[220px] rounded-lg">
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="text-xs font-mono uppercase tracking-widest text-slate-400">Nexventory Automated Gateway</div>
+                        <div class="text-2xl font-bold font-mono text-white tabular-nums" id="coQrAmount">Rp 0</div>
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-950 border border-slate-800 text-xs text-amber-400 font-medium" id="coQrStatus">
+                            <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                            <span id="coQrStatusText">Menunggu pembayaran…</span>
+                        </div>
+                        <p class="text-[11px] font-mono text-slate-500 mt-1" id="coQrOrderId"></p>
+                    </div>
+
+                    <!-- Supported e-wallets -->
+                    <div class="pt-4 border-t border-slate-800">
+                        <span class="text-[11px] font-mono text-slate-400 uppercase tracking-wider block mb-2">Didukung Aplikasi Pembayaran:</span>
+                        <div class="flex flex-wrap items-center justify-center gap-2">
+                            <span class="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300">GoPay</span>
+                            <span class="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300">OVO</span>
+                            <span class="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300">Dana</span>
+                            <span class="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300">ShopeePay</span>
+                            <span class="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300">LinkAja</span>
+                            <span class="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300">Semua M-Banking</span>
+                        </div>
+                    </div>
+
+                    <!-- Steps Guide -->
+                    <div class="text-left bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 text-xs text-slate-300 space-y-1.5">
+                        <span class="font-bold text-white uppercase text-[10px] font-mono tracking-wider block mb-1">Langkah Verifikasi:</span>
+                        <ol class="list-decimal list-inside space-y-1 text-slate-400">
+                            <li>Buka aplikasi e-wallet atau mobile banking favorit Anda</li>
+                            <li>Pilih opsi <strong class="text-slate-200">Scan QR</strong></li>
+                            <li>Arahkan kamera ke kode di atas</li>
+                            <li>Periksa nominal dan selesaikan autentikasi PIN</li>
+                        </ol>
+                    </div>
+
+                    <button type="button" id="coCancelQrisBtn" onclick="cancelCurrentPayment()"
+                            aria-label="Batalkan pembayaran QRIS dan pilih metode lain"
+                            class="min-h-[44px] px-4 py-2 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 border border-rose-900/40 rounded-lg transition-colors inline-flex items-center gap-2">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> Batalkan &amp; Ganti Metode
+                    </button>
+                </div>
+            </div>
+
+            <!-- ═══ Bank Transfer Virtual Account Panel ═══ -->
+            <div id="coBankDisplay" class="bg-slate-900/80 border border-sky-500/40 rounded-xl overflow-hidden shadow-2xl hidden">
+                <div class="px-5 py-4 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-building-columns text-sky-400" aria-hidden="true"></i>
+                        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Transfer Virtual Account</h2>
+                    </div>
+                    <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 font-mono text-xs font-bold text-sky-400" id="coBankTimer">
+                        <i class="fa-solid fa-clock text-xs" aria-hidden="true"></i>
+                        <span id="coBankTimerText">24:00:00</span>
+                    </div>
+                </div>
+
+                <div class="p-6 space-y-5">
+                    <!-- VA Card Box -->
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-400 font-mono uppercase tracking-wider">Bank Tujuan:</span>
+                            <span id="coVaBankName" class="font-mono font-bold text-base text-white px-2.5 py-0.5 rounded bg-sky-950 border border-sky-800 text-sky-300">BCA</span>
+                        </div>
+
+                        <div>
+                            <span class="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1">Nomor Virtual Account</span>
+                            <div class="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-800">
+                                <span id="coVaNumber" class="text-lg sm:text-xl font-bold font-mono tracking-widest text-white tabular-nums select-all">—</span>
+                                <button type="button" id="coCopyVaBtn" onclick="copyVaNumber()" 
+                                        aria-label="Salin nomor virtual account"
+                                        class="min-h-[44px] px-3.5 py-1.5 rounded-md bg-brand-500/15 hover:bg-brand-500/25 border border-brand-500/30 text-brand-400 text-xs font-semibold flex items-center gap-1.5 transition-colors">
+                                    <i class="fa-solid fa-copy text-xs" aria-hidden="true"></i>
+                                    <span>Salin</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-baseline pt-2 border-t border-slate-800/80">
+                            <span class="text-xs text-slate-400">Total Pembayaran:</span>
+                            <span id="coVaAmount" class="text-lg font-mono font-bold text-white tabular-nums">Rp 0</span>
+                        </div>
+
+                        <div class="flex items-center gap-2 pt-2 text-xs text-amber-400" id="coVaStatus">
+                            <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                            <span id="coVaStatusText">Menunggu transfer dari Anda…</span>
+                        </div>
+
+                        <p class="text-[11px] font-mono text-slate-500" id="coVaOrderId"></p>
+                    </div>
+
+                    <div class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-start gap-2.5">
+                        <i class="fa-solid fa-circle-info text-sm mt-0.5 flex-shrink-0" aria-hidden="true"></i>
+                        <span>Transfer <strong>tepat sesuai jumlah di atas</strong>. Nomor VA unik dan otomatis diverifikasi secara online.</span>
+                    </div>
+
+                    <!-- Steps Guide -->
+                    <div class="text-left bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 text-xs text-slate-300 space-y-1.5">
+                        <span class="font-bold text-white uppercase text-[10px] font-mono tracking-wider block mb-1">Panduan Transfer:</span>
+                        <ol class="list-decimal list-inside space-y-1 text-slate-400">
+                            <li>Buka aplikasi Mobile Banking, Internet Banking, atau ATM</li>
+                            <li>Pilih menu <strong class="text-slate-200">Transfer &gt; Virtual Account</strong></li>
+                            <li>Masukkan Nomor Virtual Account di atas</li>
+                            <li>Pastikan nama merchant tertera <strong class="text-slate-200">Nexventory</strong></li>
+                            <li>Konfirmasi transfer dan simpan bukti transaksi</li>
+                        </ol>
+                    </div>
+
+                    <div class="text-center">
+                        <button type="button" id="coCancelBankBtn" onclick="cancelCurrentPayment()"
+                                aria-label="Batalkan virtual account dan pilih metode lain"
+                                class="min-h-[44px] px-4 py-2 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 border border-rose-900/40 rounded-lg transition-colors inline-flex items-center gap-2">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i> Batalkan &amp; Ganti Metode
+                        </button>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <a href="{{ url_for('user.my_orders') }}" class="btn-primary">
-                    <i class="fas fa-list"></i> Lihat Pesanan Saya
-                </a>
-                <button class="btn-secondary" onclick="continueShopping()">
-                    <i class="fas fa-shopping-basket"></i> Belanja Lagi
-                </button>
-            </div>
+
         </div>
+
     </div>
 
-    <script>
-        let paymentTimer;
-        let countdownSeconds = 600; // 10 minutes
+</div>
 
-        // Payment method selection
-        document.addEventListener('DOMContentLoaded', function() {
-            const paymentMethods = document.querySelectorAll('.payment-method');
-            
-            paymentMethods.forEach(method => {
-                method.addEventListener('click', function() {
-                    // Remove active class from all methods
-                    paymentMethods.forEach(m => m.classList.remove('active'));
-                    
-                    // Add active class to selected method
-                    this.classList.add('active');
-                    
-                    // Show corresponding payment section
-                    const selectedMethod = this.dataset.method;
-                    document.querySelectorAll('.qris-payment, .transfer-payment, .cod-payment').forEach(section => {
-                        section.style.display = 'none';
-                    });
-                    
-                    if (selectedMethod === 'qris') {
-                        document.getElementById('qrisPayment').style.display = 'block';
-                        startPaymentTimer();
-                    } else if (selectedMethod === 'transfer') {
-                        document.getElementById('transferPayment').style.display = 'block';
-                        stopPaymentTimer();
-                    } else if (selectedMethod === 'cod') {
-                        document.getElementById('codPayment').style.display = 'block';
-                        stopPaymentTimer();
-                    }
-                });
-            });
+<!-- ═══════════════ SUCCESS MODAL ═══════════════ -->
+<div id="coSuccessOverlay" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="successModalTitle">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 text-center space-y-5 shadow-2xl">
+        <div class="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-500 mx-auto flex items-center justify-center text-emerald-400 text-2xl shadow-lg shadow-emerald-500/20">
+            <i class="fa-solid fa-check" aria-hidden="true"></i>
+        </div>
+
+        <div class="space-y-1">
+            <h3 id="successModalTitle" class="text-xl font-bold text-white">Pembayaran Sukses!</h3>
+            <p class="text-xs text-slate-400">Terima kasih, sistem telah memvalidasi pembayaran pesanan Anda.</p>
+        </div>
+
+        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs space-y-2 text-left">
+            <div class="flex justify-between">
+                <span class="text-slate-400">No. Pesanan</span>
+                <span id="coSuccessOrderId" class="font-mono font-bold text-white">—</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">Total Dibayar</span>
+                <span id="coSuccessAmount" class="font-mono font-bold text-brand-400 tabular-nums">—</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">Kanal Pembayaran</span>
+                <span id="coSuccessMethod" class="font-mono font-bold text-slate-200">—</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-2">
+            <a href="{{ url_for('user.transaction') }}" 
+               class="min-h-[44px] py-2.5 px-4 rounded-lg bg-brand-500 hover:bg-brand-600 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all">
+                <i class="fa-solid fa-receipt text-xs" aria-hidden="true"></i>
+                <span>Lihat Ledger</span>
+            </a>
+            <a href="{{ url_for('user.dashboard') }}" 
+               class="min-h-[44px] py-2.5 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs flex items-center justify-center gap-2 transition-all">
+                <i class="fa-solid fa-house text-xs" aria-hidden="true"></i>
+                <span>Dashboard</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ FAILED MODAL ═══════════════ -->
+<div id="coFailedOverlay" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="failedModalTitle">
+    <div class="bg-slate-900 border border-rose-900/60 rounded-2xl max-w-md w-full p-6 text-center space-y-5 shadow-2xl">
+        <div class="w-16 h-16 rounded-full bg-rose-500/20 border-2 border-rose-500 mx-auto flex items-center justify-center text-rose-400 text-2xl shadow-lg shadow-rose-500/20">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </div>
+
+        <div class="space-y-1">
+            <h3 id="failedModalTitle" class="text-xl font-bold text-white">Pembayaran Gagal</h3>
+            <p id="coFailedMsg" class="text-xs text-slate-400">Terjadi kendala saat memproses transaksi Anda.</p>
+        </div>
+
+        <div class="pt-2">
+            <button type="button" onclick="closeModal('coFailedOverlay'); resetPayment();" 
+                    class="w-full min-h-[44px] py-2.5 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs transition-colors">
+                Tutup &amp; Coba Kembali
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+const TOTAL_AMOUNT = {{ total_amount | int }};
+const ORDER_ITEMS  = {{ order_items | tojson }};
+
+let selectedMethod  = 'qris';
+let selectedBank    = 'bca';
+let currentOrderId  = null;
+let countdownSecs   = 600;
+let timerInterval   = null;
+let pollInterval    = null;
+
+// ── Payment Method Selection ───────────────────────────────────────────
+document.querySelectorAll('.co-method').forEach(el => {
+    el.addEventListener('click', () => {
+        document.querySelectorAll('.co-method').forEach(m => {
+            m.classList.remove('border-brand-500', 'bg-brand-500/10');
+            m.classList.add('border-slate-800', 'bg-slate-950/40');
+            m.setAttribute('aria-checked', 'false');
         });
 
-        // Payment timer for QRIS
-        function startPaymentTimer() {
-            stopPaymentTimer();
-            countdownSeconds = 600;
-            
-            paymentTimer = setInterval(() => {
-                countdownSeconds--;
-                updateTimerDisplay();
-                
-                if (countdownSeconds <= 0) {
-                    stopPaymentTimer();
-                    showPaymentExpired();
-                }
-            }, 1000);
-        }
+        el.classList.remove('border-slate-800', 'bg-slate-950/40');
+        el.classList.add('border-brand-500', 'bg-brand-500/10');
+        el.setAttribute('aria-checked', 'true');
 
-        function stopPaymentTimer() {
-            if (paymentTimer) {
-                clearInterval(paymentTimer);
-                paymentTimer = null;
+        selectedMethod = el.dataset.method;
+        const panelBank = document.getElementById('panelBank');
+        if (selectedMethod === 'bank_transfer') {
+            panelBank.classList.remove('hidden');
+        } else {
+            panelBank.classList.add('hidden');
+        }
+    });
+});
+
+// ── Bank Selection ─────────────────────────────────────────────────────
+document.querySelectorAll('.co-bank').forEach(el => {
+    el.addEventListener('click', () => {
+        document.querySelectorAll('.co-bank').forEach(b => {
+            b.classList.remove('bg-brand-500/10', 'border-brand-500');
+            b.classList.add('bg-slate-950', 'border-slate-800');
+            const sub = b.querySelector('span:last-child');
+            if (sub) {
+                sub.classList.remove('text-brand-400');
+                sub.classList.add('text-slate-400');
             }
+        });
+
+        el.classList.remove('bg-slate-950', 'border-slate-800');
+        el.classList.add('bg-brand-500/10', 'border-brand-500');
+        const activeSub = el.querySelector('span:last-child');
+        if (activeSub) {
+            activeSub.classList.remove('text-slate-400');
+            activeSub.classList.add('text-brand-400');
         }
 
-        function updateTimerDisplay() {
-            const minutes = Math.floor(countdownSeconds / 60);
-            const seconds = countdownSeconds % 60;
-            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            
-            const expiryElement = document.querySelector('.expiry');
-            if (expiryElement) {
-                expiryElement.textContent = `Berlaku ${timeString}`;
-            }
+        selectedBank = el.dataset.bank;
+    });
+});
+
+// ── Validation ─────────────────────────────────────────────────────────
+function validateCustomerInfo() {
+    const name  = document.getElementById('coName').value.trim();
+    const phone = document.getElementById('coPhone').value.trim();
+    if (!name) { 
+        if (window.showToast) window.showToast('error', 'Nama operator pemesan harus diisi'); 
+        return false; 
+    }
+    if (!phone) { 
+        if (window.showToast) window.showToast('error', 'Nomor telepon harus diisi'); 
+        return false; 
+    }
+    if (TOTAL_AMOUNT <= 0) { 
+        if (window.showToast) window.showToast('error', 'Tidak ada item dalam keranjang'); 
+        return false; 
+    }
+    return true;
+}
+
+// ── Main: initPayment ──────────────────────────────────────────────────
+async function initPayment() {
+    if (!validateCustomerInfo()) return;
+
+    const btn = document.getElementById('coPayBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin text-xs"></i> Memproses Pesanan…</span>';
+
+    const customerName  = document.getElementById('coName').value.trim();
+    const customerPhone = document.getElementById('coPhone').value.trim();
+    const customerEmail = document.getElementById('coEmail').value.trim() || 'operator@nexventory.com';
+
+    const payload = {
+        payment_method: selectedMethod,
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        customer_email: customerEmail,
+        items: ORDER_ITEMS.map((it, idx) => ({
+            id: it.id || idx,
+            name: it.name || it.product?.name || 'Produk',
+            price: it.price || 0,
+            quantity: it.quantity || 1
+        }))
+    };
+    if (selectedMethod === 'bank_transfer') payload.bank = selectedBank;
+
+    try {
+        const resp = await fetch('/user/api/payment/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+
+        if (!data.success) throw new Error(data.error || 'Gagal membuat transaksi pembayaran');
+
+        currentOrderId = data.order_id;
+
+        // Hide selector card
+        document.getElementById('paymentSelectorCard').classList.add('hidden');
+
+        if (data.payment_method === 'qris') {
+            showQrisDisplay(data);
+        } else {
+            showBankDisplay(data);
         }
 
-        function showPaymentExpired() {
-            alert('Kode QR telah kadaluarsar. Silakan generate ulang.');
-            // Generate new QR code
-            generateNewQR();
+        // Start polling
+        startPolling(data.order_id);
+
+    } catch (err) {
+        if (window.showToast) window.showToast('error', err.message || 'Terjadi kesalahan. Silakan coba kembali.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span id="coPayBtnText" class="flex items-center gap-2">
+            <i class="fa-solid fa-lock text-xs" aria-hidden="true"></i>
+            <span>Bayar Sekarang &bull; Rp <span id="coPayAmount" class="font-mono tabular-nums">${TOTAL_AMOUNT.toLocaleString('id-ID')}</span></span>
+        </span>`;
+    }
+}
+
+// ── Show QRIS Display ──────────────────────────────────────────────────
+function showQrisDisplay(data) {
+    const qrisDisplay = document.getElementById('coQrisDisplay');
+    const bankDisplay = document.getElementById('coBankDisplay');
+    qrisDisplay.classList.remove('hidden');
+    bankDisplay.classList.add('hidden');
+
+    document.getElementById('coQrAmount').textContent = 'Rp ' + Number(data.amount).toLocaleString('id-ID');
+    document.getElementById('coQrOrderId').textContent = 'Order ID: ' + data.order_id;
+
+    // Render QR
+    const loading = document.getElementById('coQrLoading');
+    const canvas  = document.getElementById('coQrCanvas');
+    const img     = document.getElementById('coQrImg');
+
+    loading.classList.remove('hidden');
+    loading.style.display = 'flex';
+    canvas.classList.add('hidden');
+    img.classList.add('hidden');
+    canvas.innerHTML = '';
+
+    if (data.qr_url) {
+        img.src = data.qr_url;
+        img.onload = () => { 
+            loading.classList.add('hidden'); 
+            loading.style.display = 'none';
+            img.classList.remove('hidden'); 
+        };
+        img.onerror = () => { renderQrFromString(data.qr_string, loading, canvas); };
+    } else if (data.qr_string) {
+        renderQrFromString(data.qr_string, loading, canvas);
+    } else {
+        loading.classList.add('hidden');
+        loading.style.display = 'none';
+        canvas.innerHTML = '<p class="text-brand-400 text-xs p-3">QR Code Midtrans Sandbox ready. Gunakan Midtrans Simulator.</p>';
+        canvas.classList.remove('hidden');
+    }
+
+    // Start QRIS 10-minute timer
+    startTimer(600, 'coTimer', 'coTimerText');
+    qrisDisplay.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderQrFromString(qrString, loadingEl, canvasEl) {
+    if (!qrString) {
+        loadingEl.classList.add('hidden');
+        loadingEl.style.display = 'none';
+        canvasEl.innerHTML = '<p class="text-brand-400 text-xs p-3">QR String tidak tersedia di sandbox mode.</p>';
+        canvasEl.classList.remove('hidden');
+        return;
+    }
+    new QRCode(canvasEl, {
+        text: qrString,
+        width: 220,
+        height: 220,
+        colorDark: '#0f172a',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+    });
+    loadingEl.classList.add('hidden');
+    loadingEl.style.display = 'none';
+    canvasEl.classList.remove('hidden');
+}
+
+// ── Show Bank Transfer Display ─────────────────────────────────────────
+function showBankDisplay(data) {
+    const bankDisplay = document.getElementById('coBankDisplay');
+    const qrisDisplay = document.getElementById('coQrisDisplay');
+    bankDisplay.classList.remove('hidden');
+    qrisDisplay.classList.add('hidden');
+
+    document.getElementById('coVaBankName').textContent = data.va_bank;
+    document.getElementById('coVaNumber').textContent   = data.va_number || '—';
+    document.getElementById('coVaAmount').textContent   = 'Rp ' + Number(data.amount).toLocaleString('id-ID');
+    document.getElementById('coVaOrderId').textContent  = 'Order ID: ' + data.order_id;
+
+    startTimer(24 * 3600, 'coBankTimer', 'coBankTimerText');
+    bankDisplay.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Timer ──────────────────────────────────────────────────────────────
+function startTimer(seconds, containerId, textId) {
+    if (timerInterval) clearInterval(timerInterval);
+    let remaining = seconds;
+
+    const textEl = document.getElementById(textId);
+
+    function tick() {
+        if (remaining <= 0) {
+            clearInterval(timerInterval);
+            if (textEl) textEl.textContent = '00:00';
+            return;
         }
-
-        function generateNewQR() {
-            // Get amount from total amount display
-            const totalAmountElement = document.querySelector('.grand-total span:last-child');
-            const amount = parseFloat(totalAmountElement.textContent.replace(/[^0-9]/g, ''));
-            
-            if (!amount || amount <= 0) {
-                alert('Invalid amount');
-                return;
-            }
-            
-            // Show loading
-            document.querySelector('.qrcode-loading').style.display = 'block';
-            document.getElementById('qrcodeCanvas').style.display = 'none';
-            
-            fetch('/user/api/qris/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    amount: amount
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Use the QR code image from API
-                    const qrcodeCanvas = document.getElementById('qrcodeCanvas');
-                    qrcodeCanvas.innerHTML = ''; // Clear previous QR
-                    
-                    // Create image element with the QR code from API
-                    const qrImage = document.createElement('img');
-                    qrImage.src = data.data.qrcode_url;
-                    qrImage.alt = 'QR Code';
-                    qrImage.style.width = '200px';
-                    qrImage.style.height = '200px';
-                    qrImage.style.border = '1px solid #ddd';
-                    qrImage.style.borderRadius = '8px';
-                    
-                    qrcodeCanvas.appendChild(qrImage);
-                    
-                    // Hide loading and show QR
-                    document.querySelector('.qrcode-loading').style.display = 'none';
-                    qrcodeCanvas.style.display = 'block';
-                    
-                    // Update amount display
-                    document.getElementById('qrisAmount').textContent = `Rp ${amount.toLocaleString('id-ID')}`;
-                    
-                    // Store transaction ID for status checking
-                    window.currentTransactionId = data.data.transaction_id;
-                    
-                    // Start payment status checking
-                    startPaymentStatusCheck(data.data.transaction_id);
-                    
-                    // Start timer
-                    startPaymentTimer();
-                } else {
-                    alert('Gagal generate QR code: ' + (data.error || 'Silakan coba lagi.'));
-                }
-            })
-            .catch(error => {
-                console.error('Error generating QR:', error);
-                alert('Terjadi kesalahan. Silakan coba lagi.');
-            });
+        const h = Math.floor(remaining / 3600);
+        const m = Math.floor((remaining % 3600) / 60);
+        const s = remaining % 60;
+        if (h > 0) {
+            textEl.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        } else {
+            textEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
         }
+        remaining--;
+    }
+    tick();
+    timerInterval = setInterval(tick, 1000);
+}
 
-        // Payment status checking
-        let statusCheckInterval;
-        
-        function startPaymentStatusCheck(transactionId) {
-            statusCheckInterval = setInterval(() => {
-                fetch(`/user/api/qris/check-status/${transactionId}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        if (data.paid) {
-                            stopPaymentTimer();
-                            clearInterval(statusCheckInterval);
-                            showPaymentSuccess();
-                        } else if (data.status === 'expired') {
-                            stopPaymentTimer();
-                            clearInterval(statusCheckInterval);
-                            showPaymentExpired();
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error checking payment status:', error);
-                });
-            }, 3000); // Check every 3 seconds
+// ── Polling ────────────────────────────────────────────────────────────
+function startPolling(orderId) {
+    if (pollInterval) clearInterval(pollInterval);
+    pollInterval = setInterval(() => checkStatus(orderId), 4000);
+}
+
+async function checkStatus(orderId) {
+    try {
+        const resp = await fetch(`/user/api/payment/status/${orderId}`);
+        const data = await resp.json();
+        if (!data.success) return;
+
+        const status = data.status;
+        updateStatusUI(status);
+
+        if (data.is_paid) {
+            clearInterval(pollInterval);
+            clearInterval(timerInterval);
+            setTimeout(() => showSuccessModal(orderId, data), 800);
+        } else if (['expire', 'cancel', 'failure', 'deny'].includes(status)) {
+            clearInterval(pollInterval);
+            showFailedModal('Pembayaran ' + status + '. Silakan ulangi pemesanan.');
         }
+    } catch (e) { /* silent network check */ }
+}
 
-        function showPaymentSuccess() {
-            const statusElement = document.getElementById('paymentStatus');
-            statusElement.innerHTML = '<span class="status-success"><i class="fas fa-check-circle"></i> Pembayaran Berhasil!</span>';
-            
-            // Show success modal
-            setTimeout(() => {
-                showSuccessModal();
-            }, 1000);
+function updateStatusUI(status) {
+    const statusMap = {
+        pending:    'Menunggu pembayaran…',
+        settlement: 'Pembayaran berhasil diverifikasi!',
+        capture:    'Pembayaran berhasil dikonfirmasi!',
+        expire:     'Kode pembayaran kedaluwarsa',
+        cancel:     'Transaksi dibatalkan',
+        failure:    'Transaksi gagal'
+    };
+    const text = statusMap[status] || status;
+
+    const qrStatusText = document.getElementById('coQrStatusText');
+    if (qrStatusText) qrStatusText.textContent = text;
+
+    const vaStatusText = document.getElementById('coVaStatusText');
+    if (vaStatusText) vaStatusText.textContent = text;
+}
+
+// ── Cancel ─────────────────────────────────────────────────────────────
+async function cancelCurrentPayment() {
+    if (!currentOrderId) { resetPayment(); return; }
+    if (!confirm('Apakah Anda yakin ingin membatalkan transaksi ini?')) return;
+    try {
+        await fetch(`/user/api/payment/cancel/${currentOrderId}`, { method: 'POST' });
+    } catch (e) {}
+    resetPayment();
+}
+
+function resetPayment() {
+    if (pollInterval) clearInterval(pollInterval);
+    if (timerInterval) clearInterval(timerInterval);
+    currentOrderId = null;
+    document.getElementById('coQrisDisplay').classList.add('hidden');
+    document.getElementById('coBankDisplay').classList.add('hidden');
+    document.getElementById('paymentSelectorCard').classList.remove('hidden');
+
+    const canvas = document.getElementById('coQrCanvas');
+    if (canvas) { canvas.innerHTML = ''; canvas.classList.add('hidden'); }
+    const img = document.getElementById('coQrImg');
+    if (img) img.classList.add('hidden');
+}
+
+// ── Copy VA ────────────────────────────────────────────────────────────
+function copyVaNumber() {
+    const va = document.getElementById('coVaNumber').textContent.trim();
+    if (!va || va === '—') return;
+    navigator.clipboard.writeText(va).then(() => {
+        const btn = document.getElementById('coCopyVaBtn');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check text-xs text-emerald-400" aria-hidden="true"></i> <span class="text-emerald-400">Disalin</span>';
+        setTimeout(() => { btn.innerHTML = orig; }, 2000);
+        if (window.showToast) window.showToast('success', 'Nomor Virtual Account disalin ke clipboard');
+    });
+}
+
+// ── Modals ─────────────────────────────────────────────────────────────
+function showSuccessModal(orderId, data) {
+    document.getElementById('coSuccessOrderId').textContent = orderId;
+    document.getElementById('coSuccessAmount').textContent  = 'Rp ' + TOTAL_AMOUNT.toLocaleString('id-ID');
+    document.getElementById('coSuccessMethod').textContent  = data.payment_type === 'qris' ? 'QRIS' : 'Virtual Account';
+    
+    const overlay = document.getElementById('coSuccessOverlay');
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+
+    // Advance stepper indicator to Step 3
+    const step2Line = document.getElementById('step2-line');
+    if (step2Line) {
+        step2Line.classList.remove('bg-slate-800');
+        step2Line.classList.add('bg-emerald-500');
+    }
+    const step3 = document.getElementById('step3');
+    if (step3) {
+        step3.classList.remove('text-slate-500');
+        step3.classList.add('text-emerald-400');
+        const badge = step3.querySelector('div');
+        if (badge) {
+            badge.classList.remove('bg-slate-800/80', 'border-slate-700/60');
+            badge.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-400');
+            badge.innerHTML = '<i class="fa-solid fa-check text-xs" aria-hidden="true"></i>';
         }
+    }
+}
 
-        // Process payment
-        function processPayment() {
-            const form = document.getElementById('checkoutForm');
-            const customerName = document.getElementById('customer_name').value;
-            const customerPhone = document.getElementById('customer_phone').value;
-            const customerAddress = document.getElementById('customer_address').value;
-            
-            // Validation
-            if (!customerName || !customerPhone || !customerAddress) {
-                alert('Silakan lengkapi semua field yang wajib diisi');
-                return;
-            }
-            
-            const selectedMethod = document.querySelector('input[name="payment_method"]:checked').value;
-            const payButton = document.getElementById('payButton');
-            
-            // Show loading state
-            payButton.disabled = true;
-            payButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
-            
-            if (selectedMethod === 'qris') {
-                // Show QRIS payment section and generate QR
-                document.getElementById('qrisPayment').style.display = 'block';
-                generateNewQR();
-                payButton.disabled = false;
-                payButton.innerHTML = '<i class="fas fa-qrcode"></i> Generate QR';
-            } else if (selectedMethod === 'transfer') {
-                // Handle bank transfer
-                handleBankTransfer();
-            } else if (selectedMethod === 'cod') {
-                // Handle COD
-                handleCOD();
-            }
-        }
+function showFailedModal(msg) {
+    document.getElementById('coFailedMsg').textContent = msg || 'Terjadi kegagalan verifikasi pembayaran.';
+    const overlay = document.getElementById('coFailedOverlay');
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+}
 
-        function handleBankTransfer() {
-            // Submit form for bank transfer
-            const form = document.getElementById('checkoutForm');
-            form.submit();
-        }
+function closeModal(id) {
+    const overlay = document.getElementById(id);
+    if (overlay) {
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+    }
+}
 
-        function handleCOD() {
-            // Submit form for COD
-            const form = document.getElementById('checkoutForm');
-            form.submit();
-        }
-
-        function continueQRISPayment(orderId) {
-            // Continue QRIS payment for existing order
-            document.getElementById('qrisPayment').style.display = 'block';
-            generateNewQR();
-            
-            // Scroll to QRIS section
-            document.getElementById('qrisPayment').scrollIntoView({ behavior: 'smooth' });
-        }
-
-        function showTransferDetails(orderId) {
-            // Show bank transfer details modal
-            alert('Detail transfer akan segera tersedia');
-        }
-
-        function cancelOrder(orderId) {
-            if (confirm('Apakah Anda yakin ingin membatalkan pesanan ini?')) {
-                // Cancel order logic here
-                alert('Pesanan dibatalkan');
-                location.reload();
-            }
-        }
-
-        function confirmDelivery(orderId) {
-            if (confirm('Apakah Anda yakin telah menerima barang ini?')) {
-                // Confirm delivery logic here
-                alert('Terima kasih! Pesanan telah dikonfirmasi.');
-                location.reload();
-            }
-        }
-
-        function trackOrder(trackingNumber) {
-            // Open tracking URL
-            window.open(`https://www.jne.co.id/id/tracking/trace?awbnum=${trackingNumber}`, '_blank');
-        }
-
-        function viewOrderDetail(orderId) {
-            // Show order detail modal
-            alert('Detail pesanan akan segera tersedia');
-        }
-
-        function contactSupport(orderId) {
-            // Contact support for order issues
-            alert('Hubungi layanan pelanggan untuk bantuan pesanan Anda');
-        }
-
-        function resetPayButton() {
-            const payButton = document.getElementById('payButton');
-            payButton.disabled = false;
-            payButton.innerHTML = '<i class="fas fa-credit-card"></i> Bayar Sekarang';
-        }
-
-        function showSuccessModal() {
-            const modal = document.getElementById('successModal');
-            if (modal) {
-                modal.style.display = 'block';
-            }
-        }
-
-        // Pending Orders Functions
-        function continueQRISPayment(orderId) {
-            // Load existing order and show QRIS payment
-            fetch(`/user/api/order/${orderId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Show QRIS payment section with existing order data
-                    document.getElementById('qrisPayment').style.display = 'block';
-                    document.getElementById('qrisAmount').textContent = `Rp ${data.order.total_amount.toLocaleString('id-ID')}`;
-                    generateNewQR();
-                    
-                    // Scroll to QRIS section
-                    document.getElementById('qrisPayment').scrollIntoView({ behavior: 'smooth' });
-                }
-            })
-            .catch(error => {
-                console.error('Error loading order:', error);
-                alert('Gagal memuat pesanan. Silakan coba lagi.');
-            });
-        }
-
-        function showTransferDetails(orderId) {
-            // Show transfer details modal
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-university"></i> Detail Transfer</h3>
-                        <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="transfer-details">
-                            <h4>Rekening Tujuan:</h4>
-                            <div class="bank-info">
-                                <p><strong>Bank:</strong> BCA</p>
-                                <p><strong>No. Rekening:</strong> 1234567890</p>
-                                <p><strong>Atas Nama:</strong> PT Nexventory Indonesia</p>
-                            </div>
-                            <div class="amount-info">
-                                <p><strong>Jumlah:</strong> Rp 0</p>
-                                <p><strong>Kode Unik:</strong> 123</p>
-                            </div>
-                            <div class="instructions">
-                                <h4>Petunjuk Transfer:</h4>
-                                <ol>
-                                    <li>Login ke aplikasi banking Anda</li>
-                                    <li>Pilih menu transfer</li>
-                                    <li>Masukkan nomor rekening tujuan</li>
-                                    <li>Masukkan jumlah sesuai total (termasuk kode unik)</li>
-                                    <li>Konfirmasi transfer</li>
-                                </ol>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn-secondary" onclick="this.closest('.modal').remove()">Tutup</button>
-                        <button class="btn-primary" onclick="uploadProof('${orderId}')">Upload Bukti</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            modal.style.display = 'block';
-        }
-
-        function cancelOrder(orderId) {
-            if (confirm('Apakah Anda yakin ingin membatalkan pesanan ini?')) {
-                fetch(`/user/api/order/${orderId}/cancel`, {
-                    method: 'POST'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Pesanan berhasil dibatalkan');
-                        location.reload();
-                    } else {
-                        alert('Gagal membatalkan pesanan. Silakan coba lagi.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error cancelling order:', error);
-                    alert('Terjadi kesalahan. Silakan coba lagi.');
-                });
-            }
-        }
-
-        // Shipped Orders Functions
-        function confirmDelivery(orderId) {
-            if (confirm('Apakah Anda yakin telah menerima pesanan ini?')) {
-                fetch(`/user/api/order/${orderId}/confirm_delivery`, {
-                    method: 'POST'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Terima kasih! Pesanan telah dikonfirmasi diterima.');
-                        location.reload();
-                    } else {
-                        alert('Gagal mengkonfirmasi penerimaan. Silakan coba lagi.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error confirming delivery:', error);
-                    alert('Terjadi kesalahan. Silakan coba lagi.');
-                });
-            }
-        }
-
-        function trackOrder(trackingNumber) {
-            // Open tracking in new window
-            window.open(`https://www.jne.co.id/id/tracking/trace/${trackingNumber}`, '_blank');
-        }
-
-        function viewOrderDetail(orderId) {
-            // Redirect to order detail page
-            window.location.href = `/user/order/${orderId}`;
-        }
-
-        function contactSupport(orderId) {
-            // Open support modal
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-headset"></i> Hubungi Bantuan</h3>
-                        <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="support-options">
-                            <h4>Order #${orderId}</h4>
-                            <p>Pilih cara menghubungi bantuan:</p>
-                            <div class="support-buttons">
-                                <button class="btn-primary" onclick="startWhatsApp('${orderId}')">
-                                    <i class="fas fa-whatsapp"></i> WhatsApp
-                                </button>
-                                <button class="btn-secondary" onclick="startEmail('${orderId}')">
-                                    <i class="fas fa-envelope"></i> Email
-                                </button>
-                                <button class="btn-outline" onclick="startCall('${orderId}')">
-                                    <i class="fas fa-phone"></i> Telepon
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            modal.style.display = 'block';
-        }
-
-        function startWhatsApp(orderId) {
-            const message = `Halo, saya butuh bantuan untuk pesanan #${orderId}`;
-            window.open(`https://wa.me/628123456789?text=${encodeURIComponent(message)}`, '_blank');
-        }
-
-        function startEmail(orderId) {
-            const subject = `Bantuan Pesanan #${orderId}`;
-            const body = `Halo Tim Nexventory,\n\nSaya butuh bantuan untuk pesanan #${orderId}.\n\nTerima kasih.`;
-            window.location.href = `mailto:support@nexventory.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        }
-
-        function startCall(orderId) {
-            // Could integrate with click-to-call or show phone number
-            alert('Silakan hubungi: 0800-1234-5678\n\nReferensi: Pesanan #' + orderId);
-        }
-
-        function uploadProof(orderId) {
-            // Could implement file upload for transfer proof
-            alert('Fitur upload bukti transfer akan segera tersedia.\n\nUntuk sementara, silakan hubungi admin.');
-        }
-
-        function handleBankTransfer() {
-            // Show upload proof modal or redirect
-            alert('Silakan transfer ke rekening yang tertera dan upload bukti transfer.');
-            resetPayButton();
-        }
-
-        function handleCOD() {
-            // Direct success for COD
-            showPaymentSuccess();
-        }
-
-        function showPaymentSuccess() {
-            stopPaymentTimer();
-            
-            // Generate order number
-            const orderNumber = 'ORD' + Date.now();
-            document.getElementById('orderNumber').textContent = orderNumber;
-            
-            // Show success modal
-            document.getElementById('paymentSuccessModal').style.display = 'block';
-            document.body.style.overflow = 'hidden';
-            
-            // Clear cart
-            localStorage.removeItem('cart');
-        }
-
-        function resetPayButton() {
-            const payButton = document.getElementById('payButton');
-            payButton.disabled = false;
-            payButton.innerHTML = '<i class="fas fa-credit-card"></i> Bayar Sekarang';
-        }
-
-        function continueShopping() {
-            window.location.href = '{{ url_for("user.browse_products") }}';
-        }
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const successModal = document.getElementById('paymentSuccessModal');
-            if (event.target === successModal) {
-                successModal.style.display = 'none';
-                document.body.style.overflow = 'auto';
-            }
-        }
-
-        // Initialize timer display
-        updateTimerDisplay();
-    </script>
-
-</body>
-</html>
+['coSuccessOverlay', 'coFailedOverlay'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener('click', e => {
+            if (e.target.id === id) closeModal(id);
+        });
+    }
+});
+</script>
+{% endblock %}

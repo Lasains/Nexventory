@@ -77,13 +77,13 @@ def add_product():
         try:
             # Ambil data dari form
             name = request.form['name']
-            description = request.form.get('description', '')
+            # NOTE: 'description' and 'sku' are not columns on the Product model.
+            # 'sku' is a computed read-only property; 'description' does not exist.
             category = request.form.get('category', '')
             price = float(request.form['price'])
             stock = int(request.form['stock'])
-            min_stock = int(request.form['min_stock'])
-            sku = request.form.get('sku', '')
-            
+            min_stock = int(request.form.get('min_stock', 0))
+
             # Handle image upload
             image = None
             if 'image' in request.files:
@@ -92,8 +92,15 @@ def add_product():
                     # Save file logic here
                     image = file.filename
 
-            new_product = Product(name=name, description=description, category=category, 
-                                  price=price, stock=stock, min_stock=min_stock, sku=sku, image=image)
+            new_product = Product(
+                name=name,
+                category=category,
+                price=price,
+                stock=stock,
+                min_stock=min_stock,
+                image=image
+            )
+
             
             db.session.add(new_product)
             db.session.commit()

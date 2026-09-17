@@ -130,27 +130,27 @@
                                 {{ product.category }}
                             </span>
                         </td>
-                        <td class="py-3.5 px-4 text-right text-white">
+                        <td class="py-3.5 px-4 text-right text-white tabular-nums">
                             Rp {{ "{:,.0f}".format(product.price) }}
                         </td>
                         <td class="py-3.5 px-4 text-center">
-                            <span class="font-bold {% if product.stock <= product.min_stock %}text-amber-400{% else %}text-emerald-400{% endif %}">
+                            <span class="font-bold tabular-nums {% if product.stock <= product.min_stock %}text-amber-400{% else %}text-emerald-400{% endif %}">
                                 {{ product.stock }} pcs
                             </span>
                         </td>
-                        <td class="py-3.5 px-4 text-center font-bold text-white">
+                        <td class="py-3.5 px-4 text-center font-bold text-white tabular-nums">
                             {{ product.total_sold }}
                         </td>
                         <td class="py-3.5 px-4 text-center">
                             {% if product.today_sold > 0 %}
-                                <span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-bold">
+                                <span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-bold tabular-nums">
                                     +{{ product.today_sold }}
                                 </span>
                             {% else %}
-                                <span class="text-slate-500">0</span>
+                                <span class="text-slate-500 tabular-nums">0</span>
                             {% endif %}
                         </td>
-                        <td class="py-3.5 px-4 text-right font-bold text-brand-400">
+                        <td class="py-3.5 px-4 text-right font-bold text-brand-400 tabular-nums">
                             Rp {{ "{:,.0f}".format(product.total_revenue) }}
                         </td>
                     </tr>
