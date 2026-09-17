@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+import json
 from datetime import datetime
 from flask import (
     Blueprint, render_template, redirect, url_for, 
@@ -16,8 +17,13 @@ from app.extensions import db
 from app import oauth 
 from app.models.user import User
 
+
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
+
+def load_google_credentials():
+    with open('client_secret_414862934769-0gbbd6pkqomm4g5uu81bru6lvmb0q9o1.apps.googleusercontent.com.json', 'r') as f:
+        return json.load(f)
 
 def validate_email(email):
     """Validate email format"""

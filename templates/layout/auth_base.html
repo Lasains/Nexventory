@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Nexventory - Industrial Command{% endblock %}</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fff7ed',
+                            100: '#ffedd5',
+                            400: '#fb923c',
+                            500: '#f97316',
+                            600: '#ea580c',
+                            700: '#c2410c',
+                        },
+                        slate: {
+                            850: '#111827',
+                            900: '#0f172a',
+                            950: '#080c14',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        .industrial-grid-bg {
+            background-size: 28px 28px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
+
+    <!-- Top Minimal Bar -->
+    <header class="w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
+        <a href="{{ url_for('main.index') }}" class="flex items-center gap-3 group">
+            <div class="w-8 h-8 rounded-md bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white shadow-md shadow-brand-500/20 group-hover:scale-105 transition-transform">
+                <i class="fa-solid fa-boxes-stacked text-sm"></i>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <span class="font-extrabold text-base tracking-wider text-white">NEXVENTORY</span>
+                <span class="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">SECURE_NODE</span>
+            </div>
+        </a>
+        <a href="{{ url_for('main.index') }}" class="text-xs font-mono text-slate-400 hover:text-brand-400 transition-colors flex items-center gap-1.5">
+            <i class="fa-solid fa-arrow-left text-[10px]"></i> Return to Portal
+        </a>
+    </header>
+
+    <!-- Main Container: Split Workstation Layout -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex items-center justify-center">
+        <div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center max-w-5xl">
+            
+            <!-- Left Info Panel (Industrial Node Telemetry) -->
+            <div class="hidden lg:flex lg:col-span-5 flex-col justify-between p-8 rounded-2xl bg-slate-900/60 border border-slate-800 industrial-grid-bg shadow-xl min-h-[480px]">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-400 mb-6">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        GATEWAY: ONLINE
+                    </div>
+                    
+                    <h2 class="text-2xl font-bold text-white tracking-tight leading-snug">
+                        Industrial Inventory Control Console
+                    </h2>
+                    <p class="text-slate-400 text-sm mt-3 leading-relaxed">
+                        Authorized operator access for warehouse stock movements, SKU catalog administration, and real-time transaction ledger.
+                    </p>
+
+                    <!-- Real-time Terminal Log Simulation -->
+                    <div class="mt-6 p-3.5 rounded-lg bg-slate-950 border border-slate-800/80 font-mono text-[11px] space-y-1.5 text-slate-400">
+                        <div class="text-slate-500 font-semibold mb-1">SYSTEM AUDIT TRAIL:</div>
+                        <div class="flex items-center gap-2 text-slate-300">
+                            <span class="text-emerald-400">[11:00:04]</span>
+                            <span>AUTH_SERVICE: STANDBY</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-slate-300">
+                            <span class="text-emerald-400">[11:00:19]</span>
+                            <span>DB_POOL: 10/10 CONN OK</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-brand-400">
+                            <span class="text-brand-400">[11:00:32]</span>
+                            <span>READY FOR OPERATOR CREDS</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Node Spec -->
+                <div class="pt-6 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-500">
+                    <span>SECURITY: TLS 1.3 / AES</span>
+                    <span>DEPOT: WH-JKT-01</span>
+                </div>
+            </div>
+
+            <!-- Right Form Panel -->
+            <div class="col-span-1 lg:col-span-7">
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-sm">
+                    
+                    <!-- Form Title & Header -->
+                    <div class="mb-6">
+                        <div class="text-xs font-mono font-semibold uppercase tracking-wider text-brand-400 mb-1">
+                            {% block auth_badge %}OPERATOR IDENTIFICATION{% endblock %}
+                        </div>
+                        <h1 class="text-2xl font-bold text-white tracking-tight">
+                            {% block auth_title %}Operator Access{% endblock %}
+                        </h1>
+                        <p class="text-slate-400 text-sm mt-1">
+                            {% block auth_subtitle %}Please verify your operator credentials to proceed.{% endblock %}
+                        </p>
+                    </div>
+
+                    <!-- Flash Messages Container -->
+                    <div class="space-y-2 mb-6">
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                    <div class="p-3.5 rounded-lg text-xs font-mono flex items-center gap-2.5 
+                                        {% if category == 'error' or category == 'danger' %}
+                                            bg-rose-950/70 border border-rose-800/80 text-rose-300
+                                        {% elif category == 'success' %}
+                                            bg-emerald-950/70 border border-emerald-800/80 text-emerald-300
+                                        {% else %}
+                                            bg-amber-950/70 border border-amber-800/80 text-amber-300
+                                        {% endif %}">
+                                        <i class="fa-solid {% if category == 'error' or category == 'danger' %}fa-triangle-exclamation text-rose-400{% elif category == 'success' %}fa-circle-check text-emerald-400{% else %}fa-circle-info text-amber-400{% endif %}"></i>
+                                        <span>{{ message }}</span>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+
+                    <!-- Form Content Slot -->
+                    {% block content %}{% endblock %}
+
+                    <!-- Footer Switcher -->
+                    <div class="mt-6 pt-5 border-t border-slate-800 text-center text-xs text-slate-400">
+                        {% block auth_footer %}{% endblock %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Bottom Status Strip -->
+    <footer class="w-full border-t border-slate-800/60 py-3 px-6 text-center text-[11px] font-mono text-slate-500">
+        &copy; 2026 Nexventory Systems &bull; Industrial Warehouse Command Center &bull; Telemetry Nominal
+    </footer>
+
+</body>
+</html>

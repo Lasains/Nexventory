@@ -1,0 +1,308 @@
+/* Nexventory - Precision Industrial Theme */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+    /* Palette */
+    --bg-deep: #0a0b10;
+    --bg-surface: #11131a;
+    --bg-surface-alt: #161922;
+    --border-steel: #1e293b;
+    --border-dim: #0f172a;
+    
+    --brand-primary: #ff7a00; /* Cargo Orange */
+    --brand-primary-dim: #cc6200;
+    --brand-primary-glow: rgba(255, 122, 0, 0.15);
+    
+    --text-main: #e2e8f0;
+    --text-dim: #94a3b8;
+    --text-muted: #64748b;
+    --text-invert: #000000;
+    
+    --status-success: #10b981;
+    --status-warning: #f59e0b;
+    --status-error: #ef4444;
+    --status-info: #3b82f6;
+
+    /* Metrics */
+    --sidebar-width: 260px;
+    --header-height: 64px;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    
+    /* Transitions */
+    --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Global Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-deep);
+    color: var(--text-main);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    line-height: 1.5;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    color: #ffffff;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-ligatures: none;
+}
+
+/* Layout Structures */
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    padding: 2rem;
+    transition: margin-left var(--transition-base);
+}
+
+@media (max-width: 1024px) {
+    .main-content {
+        margin-left: 0;
+        padding: 1.5rem;
+    }
+}
+
+/* Precision Industrial Components */
+.card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-steel);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    transition: border-color var(--transition-fast);
+}
+
+.card:hover {
+    border-color: var(--brand-primary);
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.625rem 1.25rem;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: 1px solid transparent;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background-color: var(--brand-primary);
+    color: var(--text-invert);
+}
+
+.btn-primary:hover {
+    background-color: var(--brand-primary-dim);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    border-color: var(--border-steel);
+    color: var(--text-main);
+}
+
+.btn-secondary:hover {
+    background-color: var(--bg-surface-alt);
+    border-color: var(--text-muted);
+}
+
+/* Forms */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-dim);
+}
+
+.form-control {
+    width: 100%;
+    background-color: var(--bg-surface-alt);
+    border: 1px solid var(--border-steel);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    color: var(--text-main);
+    font-family: inherit;
+    transition: all var(--transition-fast);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 2px var(--brand-primary-glow);
+}
+
+/* Utilities */
+.text-brand { color: var(--brand-primary); }
+.text-success { color: var(--status-success); }
+.text-error { color: var(--status-error); }
+.text-dim { color: var(--text-dim); }
+
+.border-steel { border: 1px solid var(--border-steel); }
+
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-deep);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-steel);
+    border-radius: 4px;
+}
+
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* ===================================
+   NEXVENTORY DESIGN SYSTEM UPGRADES
+   Phase 1 + 2 Improvements
+   =================================== */
+
+/* --- Table Row Hover States --- */
+tbody tr {
+    transition: background-color 0.12s ease;
+}
+tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.035) !important;
+}
+
+/* --- Custom Select Dropdown Styling ---
+   Removes native browser look, applies dark theme branding */
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2.5rem !important;
+    cursor: pointer;
+}
+
+select option {
+    background-color: #0f172a;
+    color: #e2e8f0;
+}
+
+/* --- Button Micro-interactions --- */
+button[type="submit"],
+a.btn-primary,
+.btn-submit {
+    transition: all 0.15s ease;
+}
+
+button[type="submit"]:hover,
+a.btn-primary:hover {
+    transform: translateY(-1px);
+}
+
+button[type="submit"]:active,
+a.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* --- Focus Ring System --- */
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: var(--brand-primary) !important;
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+/* --- Card hover lift (for stat cards) --- */
+.card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.15s ease;
+}
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+/* --- Icon button enlarged hit targets --- */
+a[title],
+button[title] {
+    min-width: 28px;
+    min-height: 28px;
+}
+
+/* --- Page body smooth background --- */
+body {
+    background-image: 
+        radial-gradient(ellipse at 20% 50%, rgba(249, 115, 22, 0.02) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(16, 185, 129, 0.015) 0%, transparent 50%);
+}
+
+/* --- Sidebar nav link smooth hover --- */
+nav a {
+    transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+/* --- Typography system enforcement ---
+   Body/description text should NEVER be monospace
+   Use .mono class only for data/code elements */
+.page-subtitle,
+.page-desc,
+p.description {
+    font-family: 'Plus Jakarta Sans', Inter, system-ui, sans-serif;
+}
+
+/* --- Toast animation support --- */
+#toast-container > * {
+    will-change: transform, opacity;
+}
+
+/* --- Table action buttons: better visibility --- */
+td a[title],
+td button[title] {
+    transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+}
+td a[title]:hover,
+td button[title]:hover {
+    transform: scale(1.08);
+}

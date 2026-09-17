@@ -30,3 +30,6 @@ instance/
 
 .github/
 .agent/
+
+*.json
+*md

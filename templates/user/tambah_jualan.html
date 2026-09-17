@@ -1,450 +1,242 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beli Produk - Nexventory</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/tambah_jualan.css') }}">
-</head>
-<body>
-    <!-- Sidebar Navigation -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <h2><i class="fas fa-box"></i> Nexventory</h2>
-            <p class="user-name">{{ current_user.username }}</p>
-        </div>
-        
-        <nav class="sidebar-nav">
-            <a href="{{ url_for('user.dashboard') }}" class="nav-item">
-                <i class="fas fa-tachometer-alt"></i> Dashboard
-            </a>
-            <a href="{{ url_for('user.manage_produk') }}" class="nav-item">
-                <i class="fas fa-boxes"></i> Kelola Produk
-            </a>
-            <a href="{{ url_for('user.manage_jualan') }}" class="nav-item">
-                <i class="fas fa-shopping-cart"></i> Kelola Pembelian
-            </a>
-            <a href="{{ url_for('user.tambah_jualan') }}" class="nav-item active">
-                <i class="fas fa-plus-circle"></i> Tambah Pembelian
-            </a>
-            <a href="{{ url_for('user.transaction') }}" class="nav-item">
-                <i class="fas fa-receipt"></i> Riwayat Transaksi
-            </a>
-            <a href="{{ url_for('user.manage_akun') }}" class="nav-item">
-                <i class="fas fa-user-cog"></i> Kelola Akun
-            </a>
-        </nav>
-        
-        <div class="sidebar-footer">
-            <a href="{{ url_for('auth.logout') }}" class="logout-btn">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
+{% extends 'base.html' %}
+
+{% block title %}Record Sale - Nexventory{% endblock %}
+{% block page_title %}Outbound Sales Dispatch{% endblock %}
+{% block page_subtitle %}Process customer orders and automatically decrement warehouse stock levels.{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('user.manage_jualan') }}" class="px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 font-mono text-xs border border-slate-700 transition-colors flex items-center gap-2">
+    <i class="fa-solid fa-arrow-left text-xs"></i>
+    <span>Back to Sales</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-6xl mx-auto">
+
+    <!-- LEFT: Transaction Form -->
+    <div class="lg:col-span-7">
+        <div class="p-6 sm:p-8 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl h-full">
+            <div class="flex items-center gap-3 pb-5 border-b border-slate-800 mb-6">
+                <div class="w-10 h-10 rounded-lg bg-brand-500/10 text-brand-400 border border-brand-500/20 flex items-center justify-center text-base">
+                    <i class="fa-solid fa-cart-plus"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-white">Create Sales Transaction</h3>
+                    <p class="text-sm text-slate-400 mt-0.5">Select product and quantity to generate dispatch order.</p>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('user.tambah_jualan') }}" class="space-y-6">
+                <!-- Product Selection -->
+                <div>
+                    <label for="product_id" class="block text-xs font-mono text-slate-300 uppercase tracking-wider mb-2">
+                        Select SKU / Product *
+                    </label>
+                    <div class="relative">
+                        <select id="product_id" name="product_id" required onchange="updateProductDetails()"
+                                class="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/40 font-mono transition-colors appearance-none cursor-pointer">
+                            <option value="" disabled selected>-- Select an in-stock asset --</option>
+                            {% for product in products %}
+                                <option value="{{ product.id }}" data-price="{{ product.price }}" data-stock="{{ product.stock }}" data-sku="{{ product.sku }}" data-name="{{ product.name }}">
+                                    {{ product.name }} ({{ product.sku }}) — {{ product.stock }} pcs — Rp {{ "{:,.0f}".format(product.price) }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <!-- Custom dropdown arrow -->
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quantity Selection -->
+                <div>
+                    <label for="quantity" class="block text-xs font-mono text-slate-300 uppercase tracking-wider mb-2">
+                        Dispatch Quantity *
+                    </label>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <button type="button" onclick="adjustQty(-1)"
+                                class="w-10 h-10 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-base flex items-center justify-center border border-slate-700 transition-colors flex-shrink-0">
+                            <i class="fa-solid fa-minus text-xs"></i>
+                        </button>
+                        <input type="number" id="quantity" name="quantity" value="1" min="1" required oninput="calculateTotal()"
+                               class="w-28 px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-base font-bold text-white text-center focus:outline-none focus:border-brand-500 font-mono">
+                        <button type="button" onclick="adjustQty(1)"
+                                class="w-10 h-10 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-base flex items-center justify-center border border-slate-700 transition-colors flex-shrink-0">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                        </button>
+
+                        <!-- Quick-add presets (distinct style from nav buttons) -->
+                        <div class="flex gap-1.5 ml-1">
+                            <button type="button" onclick="addQty(5)"
+                                    class="px-3 py-2 rounded-lg bg-slate-950 hover:bg-brand-500/10 hover:border-brand-500/40 text-slate-300 hover:text-brand-400 text-xs font-mono border border-slate-700 transition-all">+5</button>
+                            <button type="button" onclick="addQty(10)"
+                                    class="px-3 py-2 rounded-lg bg-slate-950 hover:bg-brand-500/10 hover:border-brand-500/40 text-slate-300 hover:text-brand-400 text-xs font-mono border border-slate-700 transition-all">+10</button>
+                            <button type="button" onclick="addQty(25)"
+                                    class="px-3 py-2 rounded-lg bg-slate-950 hover:bg-brand-500/10 hover:border-brand-500/40 text-slate-300 hover:text-brand-400 text-xs font-mono border border-slate-700 transition-all">+25</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Price -->
+                <div class="p-4 rounded-xl bg-slate-950/80 border border-brand-500/20 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-mono uppercase tracking-wider text-slate-400">Total Settlement Value</span>
+                        <p class="text-sm text-slate-500 mt-0.5">Auto-calculated based on unit price &amp; quantity</p>
+                    </div>
+                    <div class="text-right">
+                        <span id="grandTotal" class="text-xl sm:text-2xl font-bold font-mono text-brand-400">Rp 0</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+                    <a href="{{ url_for('user.manage_jualan') }}"
+                       class="px-5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium transition-colors">
+                        Cancel
+                    </a>
+                    <button type="submit"
+                            class="px-6 py-2.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 transition-all flex items-center gap-2 hover:scale-[1.02]">
+                        <i class="fa-solid fa-check text-xs"></i>
+                        <span>Confirm &amp; Decrement Stock</span>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <header class="top-header">
-            <h1>Beli Produk</h1>
-            <div class="header-info">
-                <span>Jelajahi produk dari berbagai penjual</span>
-            </div>
-        </header>
-
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        <i class="fas fa-{{ 'info-circle' if category == 'info' else 'exclamation-triangle' if category == 'error' else 'check-circle' }}"></i>
-                        {{ message }}
+    <!-- RIGHT: Product Info Preview -->
+    <div class="lg:col-span-5 space-y-4">
+        <!-- Selected Product Card (shown when product selected) -->
+        <div id="productInfoCard" class="hidden p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm">
+            <h4 class="text-xs font-mono font-bold uppercase tracking-wider text-slate-400 pb-3 border-b border-slate-800 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-box text-brand-400"></i> Selected Asset Info
+            </h4>
+            <div class="space-y-3">
+                <div>
+                    <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block mb-1">Asset Name</span>
+                    <span id="displayName" class="text-white font-semibold text-base block"></span>
+                </div>
+                <div class="grid grid-cols-2 gap-4 pt-2">
+                    <div class="p-3 rounded-lg bg-slate-950 border border-slate-800">
+                        <span class="text-[10px] font-mono text-slate-500 uppercase block mb-1">Unit Price</span>
+                        <span id="displayPrice" class="text-white font-bold font-mono text-sm block">Rp 0</span>
                     </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <!-- Search and Filter -->
-        <div class="shop-header">
-            <div class="search-bar">
-                <div class="search-box">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="searchInput" placeholder="Cari produk..." onkeyup="filterProducts()">
+                    <div class="p-3 rounded-lg bg-slate-950 border border-slate-800">
+                        <span class="text-[10px] font-mono text-slate-500 uppercase block mb-1">Stock Available</span>
+                        <span id="displayStock" class="text-emerald-400 font-bold font-mono text-sm block">0 pcs</span>
+                    </div>
                 </div>
-                <div class="filter-dropdown">
-                    <select id="categoryFilter" onchange="filterProducts()">
-                        <option value="">Semua Kategori</option>
-                        <option value="elektronik">Elektronik</option>
-                        <option value="fashion">Fashion</option>
-                        <option value="makanan">Makanan</option>
-                        <option value="minuman">Minuman</option>
-                        <option value="kesehatan">Kesehatan</option>
-                        <option value="olahraga">Olahraga</option>
-                        <option value="lainnya">Lainnya</option>
-                    </select>
+                <div class="p-3 rounded-lg bg-slate-950 border border-slate-800">
+                    <span class="text-[10px] font-mono text-slate-500 uppercase block mb-1">SKU Identifier</span>
+                    <span id="displaySku" class="text-brand-400 font-bold font-mono text-sm block">-</span>
                 </div>
-                <div class="filter-dropdown">
-                    <select id="sortFilter" onchange="sortProducts()">
-                        <option value="name">Urutkan Nama</option>
-                        <option value="price-low">Harga Terendah</option>
-                        <option value="price-high">Harga Tertinggi</option>
-                        <option value="stock">Stok Terbanyak</option>
-                    </select>
+                <!-- Stock warning -->
+                <div id="stockWarning" class="hidden p-3 rounded-lg bg-amber-950/40 border border-amber-800/60 flex items-center gap-2">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-400 text-xs flex-shrink-0"></i>
+                    <span class="text-amber-300 text-xs font-mono">Stock at or below minimum threshold — reorder recommended</span>
                 </div>
-            </div>
-            
-            <div class="cart-summary">
-                <a href="{{ url_for('user.checkout') }}" class="cart-btn">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span class="cart-count" id="cartCount">0</span>
-                    <span>Keranjang</span>
-                </a>
             </div>
         </div>
 
-        <!-- Products Grid -->
-        <div class="products-container">
-            <div class="products-grid" id="productsGrid">
-                {% for product in products %}
-                <div class="product-card" data-category="{{ product.category }}" data-price="{{ product.price }}" data-stock="{{ product.stock }}" data-name="{{ product.name }}">
-                    <div class="product-image">
-                        {% if product.image %}
-                            <img src="{{ url_for('static', filename='uploads/' + product.image) }}" alt="{{ product.name }}">
-                        {% else %}
-                            <img src="https://via.placeholder.com/300x200/667eea/ffffff?text={{ product.name[:10] }}" alt="{{ product.name }}">
-                        {% endif %}
-                        <div class="product-badge">
-                            {% if product.stock <= product.min_stock %}
-                                <span class="badge low-stock">Stok Menipis</span>
-                            {% elif product.stock == 0 %}
-                                <span class="badge out-of-stock">Habis</span>
-                            {% else %}
-                                <span class="badge available">Tersedia</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <div class="product-info">
-                        <h3 class="product-name">{{ product.name }}</h3>
-                        <p class="product-category">{{ product.category|title }}</p>
-                        <p class="product-description">Produk berkualitas dari kategori {{ product.category|title }}</p>
-                        
-                        <div class="product-meta">
-                            <div class="price-info">
-                                <span class="current-price">Rp {{ "%.0f"|format(product.price) }}</span>
-                            </div>
-                            
-                            <div class="stock-info">
-                                <i class="fas fa-box"></i>
-                                <span>Stok: {{ product.stock }}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="seller-info">
-                            <i class="fas fa-store"></i>
-                            <span>{{ product.seller_name or 'Toko Resmi' }}</span>
-                        </div>
-                        
-                        <div class="product-actions">
-                            <div class="quantity-selector">
-                                <button class="qty-btn" onclick="decreaseQty('{{ product.id }}')">-</button>
-                                <input type="number" id="qty-{{ product.id }}" class="qty-input" value="1" min="1" max="{{ product.stock }}" readonly>
-                                <button class="qty-btn" onclick="increaseQty('{{ product.id }}', '{{ product.stock }}')">+</button>
-                            </div>
-                            
-                            <button class="add-to-cart-btn" onclick="addToCart('{{ product.id }}')" {% if product.stock == 0 %}disabled{% endif %}>
-                                {% if product.stock == 0 %}
-                                    <i class="fas fa-times"></i> Habis
-                                {% else %}
-                                    <i class="fas fa-cart-plus"></i> Tambah
-                                {% endif %}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                {% else %}
-                <div class="no-products">
-                    <i class="fas fa-box-open"></i>
-                    <h3>Belum Ada Produk</h3>
-                    <p>Belum ada produk yang tersedia saat ini.</p>
-                </div>
-                {% endfor %}
+        <!-- Empty state when no product selected -->
+        <div id="productEmptyState" class="p-8 rounded-2xl bg-slate-900/40 border border-dashed border-slate-700 text-center">
+            <div class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center mx-auto mb-3">
+                <i class="fa-solid fa-box-open text-slate-500 text-lg"></i>
             </div>
+            <p class="text-slate-400 text-sm font-medium">No asset selected</p>
+            <p class="text-slate-600 text-xs mt-1 font-mono">→ Select a SKU from the dropdown to preview details</p>
         </div>
 
-        <!-- Loading More -->
-        <div class="load-more-container" id="loadMoreContainer" style="display: none;">
-            <button class="load-more-btn" onclick="loadMoreProducts()">
-                <i class="fas fa-spinner fa-spin"></i> Muat Lebih Banyak
-            </button>
+        <!-- Quick Reference: Dispatch Tips -->
+        <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/60 space-y-2.5">
+            <h5 class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-info text-slate-600"></i> Dispatch Protocol
+            </h5>
+            <ul class="space-y-1.5 text-xs text-slate-500 font-mono">
+                <li class="flex items-start gap-2"><span class="text-brand-500 mt-0.5">→</span> Stock is decremented automatically upon confirmation</li>
+                <li class="flex items-start gap-2"><span class="text-brand-500 mt-0.5">→</span> Transaction is timestamped and added to Movement Ledger</li>
+                <li class="flex items-start gap-2"><span class="text-brand-500 mt-0.5">→</span> Revenue impact is recorded in Sales Records immediately</li>
+            </ul>
         </div>
     </div>
 
-    <!-- Cart Modal -->
-    <div id="cartModal" class="modal">
-        <div class="modal-content cart-modal">
-            <div class="modal-header">
-                <h3><i class="fas fa-shopping-cart"></i> Keranjang Belanja</h3>
-                <button class="close-btn" onclick="closeCartModal()">&times;</button>
-            </div>
-            
-            <div class="modal-body">
-                <div class="cart-items" id="cartItems">
-                    <div class="empty-cart">
-                        <i class="fas fa-shopping-cart"></i>
-                        <p>Keranjang masih kosong</p>
-                    </div>
-                </div>
-                
-                <div class="cart-summary">
-                    <div class="summary-row">
-                        <span>Subtotal:</span>
-                        <span id="cartSubtotal">Rp 0</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>Biaya Layanan (2%):</span>
-                        <span id="cartService">Rp 0</span>
-                    </div>
-                    <div class="summary-row total">
-                        <span>Total:</span>
-                        <span id="cartTotal">Rp 0</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="closeCartModal()">Lanjut Belanja</button>
-                <button class="btn-primary" onclick="proceedToCheckout()" id="checkoutBtn" disabled>
-                    <i class="fas fa-credit-card"></i> Checkout
-                </button>
-            </div>
-        </div>
-    </div>
+</div>
+{% endblock %}
 
-    <script>
-        let cart = [];
-        let products = [];
-        
-        // Parse products data safely
-        try {
-            products = JSON.parse('{{ products_data|tojson|safe }}');
-        } catch (e) {
-            console.error('Error parsing products data:', e);
+{% block scripts %}
+<script>
+const products = {{ products | map(attribute='id') | list | tojson }};
+
+function updateProductDetails() {
+    const select = document.getElementById('product_id');
+    const selectedOption = select.options[select.selectedIndex];
+    const infoCard = document.getElementById('productInfoCard');
+    const emptyState = document.getElementById('productEmptyState');
+    const stockWarning = document.getElementById('stockWarning');
+
+    if (selectedOption && selectedOption.value) {
+        const price = parseFloat(selectedOption.dataset.price) || 0;
+        const stock = parseInt(selectedOption.dataset.stock) || 0;
+        const sku = selectedOption.dataset.sku || '-';
+        const name = selectedOption.dataset.name || '';
+
+        document.getElementById('displayName').innerText = name;
+        document.getElementById('displayPrice').innerText = 'Rp ' + price.toLocaleString('id-ID');
+        document.getElementById('displayStock').innerText = stock + ' pcs';
+        document.getElementById('displaySku').innerText = sku;
+
+        const qtyInput = document.getElementById('quantity');
+        qtyInput.max = stock;
+
+        // Show/hide stock warning
+        if (stock <= 5) {
+            stockWarning.classList.remove('hidden');
+        } else {
+            stockWarning.classList.add('hidden');
         }
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            loadCartFromStorage();
-            updateCartUI();
-        });
+        infoCard.classList.remove('hidden');
+        emptyState.classList.add('hidden');
+        calculateTotal();
+    } else {
+        infoCard.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+    }
+}
 
-        // Cart Management
-        function loadCartFromStorage() {
-            const savedCart = localStorage.getItem('userCart');
-            if (savedCart) {
-                cart = JSON.parse(savedCart);
-            }
-        }
+function adjustQty(delta) {
+    const qtyInput = document.getElementById('quantity');
+    let current = parseInt(qtyInput.value) || 1;
+    let next = current + delta;
+    if (next < 1) next = 1;
+    if (qtyInput.max && next > parseInt(qtyInput.max)) next = parseInt(qtyInput.max);
+    qtyInput.value = next;
+    calculateTotal();
+}
 
-        function saveCartToStorage() {
-            localStorage.setItem('userCart', JSON.stringify(cart));
-        }
+function addQty(val) {
+    const qtyInput = document.getElementById('quantity');
+    let current = parseInt(qtyInput.value) || 0;
+    let next = current + val;
+    if (qtyInput.max && next > parseInt(qtyInput.max)) next = parseInt(qtyInput.max);
+    qtyInput.value = next;
+    calculateTotal();
+}
 
-        function updateCartUI() {
-            const cartCount = document.getElementById('cartCount');
-            const cartItems = document.getElementById('cartItems');
-            const cartSubtotal = document.getElementById('cartSubtotal');
-            const cartService = document.getElementById('cartService');
-            const cartTotal = document.getElementById('cartTotal');
-            const checkoutBtn = document.getElementById('checkoutBtn');
-            
-            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-            cartCount.textContent = totalItems;
-            
-            if (cart.length === 0) {
-                cartItems.innerHTML = `
-                    <div class="empty-cart">
-                        <i class="fas fa-shopping-cart"></i>
-                        <p>Keranjang masih kosong</p>
-                    </div>
-                `;
-                checkoutBtn.disabled = true;
-            } else {
-                let cartHTML = '';
-                let subtotal = 0;
-                
-                cart.forEach(item => {
-                    const itemTotal = item.price * item.quantity;
-                    subtotal += itemTotal;
-                    
-                    cartHTML += `
-                        <div class="cart-item">
-                            <div class="item-info">
-                                <h4>${item.name}</h4>
-                                <p>Rp ${item.price.toLocaleString('id-ID')} x ${item.quantity}</p>
-                            </div>
-                            <div class="item-total">
-                                <span>Rp ${itemTotal.toLocaleString('id-ID')}</span>
-                                <button class="remove-btn" onclick="removeFromCart(${item.id})">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                cartItems.innerHTML = cartHTML;
-                const serviceFee = subtotal * 0.02;
-                const total = subtotal + serviceFee;
-                
-                cartSubtotal.textContent = `Rp ${subtotal.toLocaleString('id-ID')}`;
-                cartService.textContent = `Rp ${serviceFee.toLocaleString('id-ID')}`;
-                cartTotal.textContent = `Rp ${total.toLocaleString('id-ID')}`;
-                checkoutBtn.disabled = false;
-            }
-        }
+function calculateTotal() {
+    const select = document.getElementById('product_id');
+    const selectedOption = select.options[select.selectedIndex];
+    const qty = parseInt(document.getElementById('quantity').value) || 0;
 
-        function addToCart(productId) {
-            const product = products.find(p => p.id == productId);
-            if (!product || product.stock === 0) return;
-            
-            const qtyInput = document.getElementById(`qty-${productId}`);
-            const quantity = parseInt(qtyInput.value) || 1;
-            
-            const existingItem = cart.find(item => item.id == productId);
-            
-            if (existingItem) {
-                const newQuantity = existingItem.quantity + quantity;
-                if (newQuantity <= product.stock) {
-                    existingItem.quantity = newQuantity;
-                } else {
-                    showNotification('Stok tidak mencukupi!', 'error');
-                    return;
-                }
-            } else {
-                cart.push({
-                    id: product.id,
-                    name: product.name,
-                    price: product.price,
-                    quantity: quantity,
-                    image: product.image || null,
-                    seller_name: product.seller_name || 'Toko Resmi'
-                });
-            }
-            
-            saveCartToStorage();
-            updateCartUI();
-            showNotification('Produk ditambahkan ke keranjang!', 'success');
-            
-            // Reset quantity
-            qtyInput.value = 1;
-        }
-
-        function removeFromCart(productId) {
-            cart = cart.filter(item => item.id != productId);
-            saveCartToStorage();
-            updateCartUI();
-        }
-
-        function increaseQty(productId, maxStock) {
-            const qtyInput = document.getElementById(`qty-${productId}`);
-            const currentQty = parseInt(qtyInput.value) || 1;
-            const maxStockInt = parseInt(maxStock);
-            if (currentQty < maxStockInt) {
-                qtyInput.value = currentQty + 1;
-            }
-        }
-
-        function decreaseQty(productId) {
-            const qtyInput = document.getElementById(`qty-${productId}`);
-            const currentQty = parseInt(qtyInput.value) || 1;
-            if (currentQty > 1) {
-                qtyInput.value = currentQty - 1;
-            }
-        }
-
-        // Modal Functions
-        function openCartModal() {
-            document.getElementById('cartModal').style.display = 'block';
-        }
-
-        function closeCartModal() {
-            document.getElementById('cartModal').style.display = 'none';
-        }
-
-        function proceedToCheckout() {
-            if (cart.length === 0) return;
-            
-            // Save cart to session for checkout
-            const cartData = encodeURIComponent(JSON.stringify(cart));
-            window.location.href = `/user/checkout?cart_data=${cartData}`;
-        }
-
-        // Filter and Search Functions
-        function filterProducts() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const categoryFilter = document.getElementById('categoryFilter').value;
-            const productCards = document.querySelectorAll('.product-card');
-            
-            productCards.forEach(card => {
-                const name = card.dataset.name.toLowerCase();
-                const category = card.dataset.category;
-                
-                const matchesSearch = name.includes(searchTerm);
-                const matchesCategory = !categoryFilter || category === categoryFilter;
-                
-                card.style.display = matchesSearch && matchesCategory ? 'block' : 'none';
-            });
-        }
-
-        function sortProducts() {
-            const sortValue = document.getElementById('sortFilter').value;
-            const productsGrid = document.getElementById('productsGrid');
-            const productCards = Array.from(productsGrid.querySelectorAll('.product-card'));
-            
-            productCards.sort((a, b) => {
-                switch(sortValue) {
-                    case 'name':
-                        return a.dataset.name.localeCompare(b.dataset.name);
-                    case 'price-low':
-                        return parseFloat(a.dataset.price) - parseFloat(b.dataset.price);
-                    case 'price-high':
-                        return parseFloat(b.dataset.price) - parseFloat(a.dataset.price);
-                    case 'stock':
-                        return parseInt(b.dataset.stock) - parseInt(a.dataset.stock);
-                    default:
-                        return 0;
-                }
-            });
-            
-            productCards.forEach(card => productsGrid.appendChild(card));
-        }
-
-        // Notification
-        function showNotification(message, type) {
-            const notification = document.createElement('div');
-            notification.className = `alert alert-${type}`;
-            notification.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
-                ${message}
-            `;
-            
-            document.querySelector('.main-content').insertBefore(notification, document.querySelector('.shop-header'));
-            
-            setTimeout(() => {
-                notification.remove();
-            }, 3000);
-        }
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('cartModal');
-            if (event.target === modal) {
-                closeCartModal();
-            }
-        }
-    </script>
-</body>
-</html>
+    if (selectedOption && selectedOption.value) {
+        const price = parseFloat(selectedOption.dataset.price) || 0;
+        const total = price * qty;
+        document.getElementById('grandTotal').innerText = 'Rp ' + total.toLocaleString('id-ID');
+    } else {
+        document.getElementById('grandTotal').innerText = 'Rp 0';
+    }
+}
+</script>
+{% endblock %}

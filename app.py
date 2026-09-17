@@ -1,25 +1,9 @@
 import os
 from dotenv import load_dotenv
-from flask import render_template
-from flask_login import LoginManager
-from app.routes.auth import auth_bp
-from app.routes.admin import admin_bp
-from app.routes.user import user_bp
-from app.routes.main import bp as main_bp
-from app.models.user import User
-from app.extensions import login_manager
 from app import create_app
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
-
+load_dotenv()
 app = create_app()
-
-# Route untuk halaman utama
-@app.route('/')
-def index():
-    return render_template('index.html')
 
 if __name__ == '__main__':
     # Run auto-migration before starting the app

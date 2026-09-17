@@ -1,51 +1,62 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Nexventory</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body>
-    <div class="login-container">
-        <div class="login-form">
-            <h2>Login ke Nexventory</h2>
-            
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-            
-            <form method="POST" action="{{ url_for('auth.login') }}">
-                <div class="form-group">
-                    <label for="username">Username:</label>
-                    <input type="text" id="username" name="username" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" required>
-                </div>
-                
-                <button type="submit" class="btn-login">
-                    <i class="fas fa-sign-in-alt"></i> Login
-                </button>
-            </form>
+{% extends 'layout/auth_base.html' %}
 
-            <!-- Social Login Divider -->
-            <div class="social-login">
-                <span>Atau login dengan</span>
+{% block title %}Sign In - Nexventory{% endblock %}
+{% block auth_badge %}SECURE SYSTEM GATEWAY{% endblock %}
+{% block auth_title %}Sign In to Console{% endblock %}
+{% block auth_subtitle %}Enter your operator credentials to access warehouse operations.{% endblock %}
+
+{% block content %}
+<form method="POST" action="{{ url_for('auth.login') }}" class="space-y-4">
+    <div>
+        <label for="username" class="block text-xs font-mono font-medium text-slate-300 uppercase tracking-wider mb-1.5">
+            Operator Username / Email
+        </label>
+        <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                <i class="fa-solid fa-user text-xs"></i>
             </div>
-            
-            <p class="register-link">
-                Belum punya akun? <a href="{{ url_for('auth.register') }}">Daftar di sini</a>
-            </p>
+            <input type="text" id="username" name="username" value="{{ username|default('') }}" 
+                   class="w-full pl-9 pr-4 py-2.5 bg-slate-950/80 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-mono transition-colors" 
+                   placeholder="operator.id or email" required autofocus>
         </div>
     </div>
-</body>
-</html>
+    
+    <div>
+        <div class="flex items-center justify-between mb-1.5">
+            <label for="password" class="block text-xs font-mono font-medium text-slate-300 uppercase tracking-wider">
+                Passphrase / Key
+            </label>
+        </div>
+        <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                <i class="fa-solid fa-lock text-xs"></i>
+            </div>
+            <input type="password" id="password" name="password" 
+                   class="w-full pl-9 pr-4 py-2.5 bg-slate-950/80 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-mono transition-colors" 
+                   placeholder="••••••••••••" required>
+        </div>
+    </div>
+    
+    <div class="pt-2">
+        <button type="submit" class="w-full py-3 px-4 bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm rounded-lg shadow-lg shadow-brand-500/25 transition-all flex items-center justify-center gap-2 group">
+            <i class="fa-solid fa-arrow-right-to-bracket text-xs group-hover:translate-x-0.5 transition-transform"></i>
+            <span>Authenticate Session</span>
+        </button>
+    </div>
+</form>
+
+<div class="mt-6 p-3 rounded-lg bg-slate-950/60 border border-slate-800 flex items-center justify-between text-[11px] font-mono text-slate-400">
+    <div class="flex items-center gap-2">
+        <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+        <span>Session Protected: AES-256</span>
+    </div>
+    <span class="text-slate-500">PORT: 5000</span>
+</div>
+{% endblock %}
+
+{% block auth_footer %}
+    Don't have an operator account yet? 
+    <a href="{{ url_for('auth.register') }}" class="font-semibold text-brand-400 hover:text-brand-300 ml-1 transition-colors">
+        Register New Node <i class="fa-solid fa-arrow-right text-[10px] ml-0.5"></i>
+    </a>
+{% endblock %}

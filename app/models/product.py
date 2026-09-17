@@ -11,5 +11,10 @@ class Product(db.Model):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
     
+    @property
+    def sku(self):
+        cat_prefix = (self.category[:3] if self.category else 'GEN').upper()
+        return f"SKU-{cat_prefix}-{self.id:04d}"
+    
     def __repr__(self):
         return f'<Product {self.name}>'

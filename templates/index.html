@@ -1,212 +1,454 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="en" class="dark scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexventory - Inventory Management System</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/index.css">
+    <title>Nexventory - Industrial Inventory & Warehouse Intelligence</title>
     
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fff7ed',
+                            100: '#ffedd5',
+                            200: '#fed7aa',
+                            300: '#fdba74',
+                            400: '#fb923c',
+                            500: '#f97316',
+                            600: '#ea580c',
+                            700: '#c2410c',
+                        },
+                        slate: {
+                            850: '#111827',
+                            900: '#0f172a',
+                            950: '#080c14',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Custom Fine Grid & Scanline Accents */
+        .industrial-grid-bg {
+            background-size: 32px 32px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+        .glow-amber {
+            box-shadow: 0 0 25px -5px rgba(249, 115, 22, 0.25);
+        }
+    </style>
 </head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen selection:bg-brand-500 selection:text-white">
 
-
-<body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
-        <div class="container">
-            <a class="navbar-brand" href="#">Nexventory</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#home">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#about">About Us</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#contact">Contact Us</a>
-                    </li>
-                </ul>
-                <div class="d-flex">
-                    <a href="/login" class="btn btn-outline-light me-2">Login</a>
-                    <a href="/register" class="btn btn-primary">Register</a>
+    <!-- Top Navigation -->
+    <header class="sticky top-0 z-50 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Brand Logo -->
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-md bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white shadow-lg shadow-brand-500/20 ring-1 ring-white/20">
+                    <i class="fas fa-boxes-stacked text-base"></i>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="font-extrabold text-lg tracking-wider text-white">NEXVENTORY</span>
+                    <span class="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">v2.4-IND</span>
                 </div>
             </div>
+
+            <!-- Nav Links -->
+            <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+                <a href="#telemetry" class="hover:text-brand-400 transition-colors flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Live Telemetry
+                </a>
+                <a href="#capabilities" class="hover:text-brand-400 transition-colors">Capabilities</a>
+                <a href="#pipeline" class="hover:text-brand-400 transition-colors">Logistics Flow</a>
+                <a href="#specs" class="hover:text-brand-400 transition-colors">Specifications</a>
+            </nav>
+
+            <!-- CTA Buttons -->
+            <div class="flex items-center gap-3">
+                <a href="{{ url_for('auth.login') }}" class="text-sm font-medium text-slate-300 hover:text-white px-4 py-2 rounded-lg hover:bg-slate-800/60 transition-all border border-transparent hover:border-slate-700">
+                    <i class="fas fa-arrow-right-to-bracket mr-1.5 text-xs"></i> Sign In
+                </a>
+                <a href="{{ url_for('auth.register') }}" class="text-sm font-semibold bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg transition-all shadow-md shadow-brand-500/20 flex items-center gap-2">
+                    <span>Initialize Node</span>
+                    <i class="fas fa-chevron-right text-xs"></i>
+                </a>
+            </div>
         </div>
-    </nav>
+    </header>
 
     <!-- Hero Section -->
-    <section id="home" class="hero-section text-center position-relative">
-        <!-- Bootstrap Carousel for Background -->
-        <div id="heroCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel" data-bs-interval="3000">
-            <div class="carousel-indicators">
-                <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active"></button>
-                <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1"></button>
-                <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2"></button>
-                <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="3"></button>
+    <section class="relative pt-16 pb-20 overflow-hidden industrial-grid-bg border-b border-slate-800/80">
+        <!-- Radial Ambient Glow -->
+        <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            <!-- Telemetry Status Eyebrow -->
+            <div class="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-700/80 text-xs font-mono text-slate-300 mb-6 shadow-sm">
+                <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span>TELEMETRY FEED ACTIVE</span>
+                <span class="text-slate-600">|</span>
+                <span class="text-brand-400">HUB: WH-JKT-01</span>
+                <span class="text-slate-600">|</span>
+                <span class="text-slate-400">LATENCY: 14ms</span>
             </div>
-            <div class="carousel-inner">
-                <div class="carousel-item active">
-                    <img src="{{ url_for('static', filename='images/warehouse_hero_1.jpg') }}" class="d-block w-100" alt="Warehouse Hero 1">
-                </div>
-                <div class="carousel-item">
-                    <img src="{{ url_for('static', filename='images/warehouse_hero_2.jpg') }}" class="d-block w-100" alt="Warehouse Hero 2">
-                </div>
-                <div class="carousel-item">
-                    <img src="{{ url_for('static', filename='images/warehouse_hero_3.jpg') }}" class="d-block w-100" alt="Warehouse Hero 3">
-                </div>
-                <div class="carousel-item">
-                    <img src="{{ url_for('static', filename='images/warehouse_hero_4.jpg') }}" class="d-block w-100" alt="Warehouse Hero 4">
-                </div>
+
+            <!-- Main Headline -->
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-tight sm:leading-none">
+                Precision Logistics. <br class="hidden sm:inline">
+                <span class="bg-gradient-to-r from-white via-slate-200 to-brand-400 bg-clip-text text-transparent">Autonomous SKU Intelligence.</span>
+            </h1>
+
+            <!-- Subtitle -->
+            <p class="mt-6 text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed font-normal">
+                High-velocity warehouse stock synchronization, sub-second SKU movement audits, and automated reorder alerts built for industrial distribution facilities.
+            </p>
+
+            <!-- CTA Actions -->
+            <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
+                <a href="{{ url_for('auth.register') }}" class="px-6 py-3 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm transition-all shadow-lg shadow-brand-500/25 flex items-center gap-2.5">
+                    <i class="fas fa-terminal text-xs"></i>
+                    <span>Access Command Center</span>
+                    <i class="fas fa-arrow-right text-xs"></i>
+                </a>
+                <a href="#telemetry" class="px-6 py-3 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-200 font-medium text-sm border border-slate-700 transition-all flex items-center gap-2">
+                    <i class="fas fa-chart-line text-slate-400 text-xs"></i>
+                    <span>Explore Live Telemetry</span>
+                </a>
             </div>
-            <!-- Carousel controls (optional - hidden for cleaner look) -->
-            <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" style="display: none;">
-                <span class="carousel-control-prev-icon"></span>
-            </button>
-            <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" style="display: none;">
-                <span class="carousel-control-next-icon"></span>
-            </button>
-        </div>
-        
-        <!-- Hero Content Overlay -->
-        <div class="hero-content position-relative z-1">
-            <div class="container">
-                <h1 class="display-4 fw-bold mb-4 text-white">Welcome to Nexventory</h1>
-                <p class="lead mb-4 text-white">Efficient Inventory Management System for Your Business</p>
-                <a href="/register" class="btn btn-light btn-lg me-2">Get Started</a>
-                <a href="#features" class="btn btn-outline-light btn-lg">Learn More</a>
+
+            <!-- Signature Element: Interactive Industrial Telemetry Dashboard Preview -->
+            <div id="telemetry" class="mt-14 max-w-5xl mx-auto rounded-xl border border-slate-800 bg-slate-900/90 shadow-2xl overflow-hidden text-left glow-amber">
+                <!-- Terminal Header Bar -->
+                <div class="bg-slate-950/90 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-rose-500/80"></div>
+                        <div class="w-3 h-3 rounded-full bg-amber-500/80"></div>
+                        <div class="w-3 h-3 rounded-full bg-emerald-500/80"></div>
+                        <span class="ml-3 font-mono text-xs text-slate-400">NEX-CONSOLE // DEPOT_CLUSTER_08 // LIVE INVENTORY AUDIT</span>
+                    </div>
+                    <div class="flex items-center gap-3 font-mono text-xs">
+                        <span class="text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60 flex items-center gap-1.5">
+                            <i class="fas fa-circle-check text-[10px]"></i> 99.98% SYNC ACCURACY
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Live KPI Strip -->
+                <div class="grid grid-cols-2 md:grid-cols-4 border-b border-slate-800 divide-x divide-slate-800 bg-slate-950/40 font-mono">
+                    <div class="p-4">
+                        <div class="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Total Monitored SKUs</div>
+                        <div class="text-xl font-bold text-white mt-1">18,420</div>
+                        <div class="text-[10px] text-emerald-400 mt-0.5"><i class="fas fa-arrow-trend-up mr-1"></i>+4.2% this week</div>
+                    </div>
+                    <div class="p-4">
+                        <div class="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Warehouse Bays</div>
+                        <div class="text-xl font-bold text-white mt-1">128 / 140</div>
+                        <div class="text-[10px] text-brand-400 mt-0.5">91.4% Capacity</div>
+                    </div>
+                    <div class="p-4">
+                        <div class="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Inbound Queue</div>
+                        <div class="text-xl font-bold text-emerald-400 mt-1">840 Units</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Dock Bay 4, 7, 12</div>
+                    </div>
+                    <div class="p-4">
+                        <div class="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Critical Stock Alerts</div>
+                        <div class="text-xl font-bold text-amber-400 mt-1">3 Triggers</div>
+                        <div class="text-[10px] text-amber-500 mt-0.5">Auto-PO Dispatched</div>
+                    </div>
+                </div>
+
+                <!-- Industrial Data Table Mockup -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead class="bg-slate-950/70 text-slate-400 border-b border-slate-800 uppercase text-[10px]">
+                            <tr>
+                                <th class="py-3 px-4">SKU / Code</th>
+                                <th class="py-3 px-4">Asset Description</th>
+                                <th class="py-3 px-4">Bin Location</th>
+                                <th class="py-3 px-4 text-center">Stock Level</th>
+                                <th class="py-3 px-4 text-right">Unit Val (IDR)</th>
+                                <th class="py-3 px-4 text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/60 text-slate-300">
+                            <tr class="hover:bg-slate-800/40 transition-colors">
+                                <td class="py-3 px-4 text-brand-400 font-semibold">SKU-8921-PLC</td>
+                                <td class="py-3 px-4 font-sans font-medium text-white">Siemens S7-1200 CPU Controller Module</td>
+                                <td class="py-3 px-4 text-slate-400">RACK-A4 // BIN-08</td>
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <div class="w-20 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                                            <div class="bg-emerald-500 h-full rounded-full" style="width: 82%"></div>
+                                        </div>
+                                        <span class="text-emerald-400">148 pcs</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-right font-medium">Rp 4.250.000</td>
+                                <td class="py-3 px-4 text-center">
+                                    <span class="px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800 text-[10px]">OPTIMAL</span>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40 transition-colors">
+                                <td class="py-3 px-4 text-brand-400 font-semibold">SKU-3140-OPT</td>
+                                <td class="py-3 px-4 font-sans font-medium text-white">Omron E3Z Laser Optical Sensor 24V</td>
+                                <td class="py-3 px-4 text-slate-400">RACK-B1 // BIN-22</td>
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <div class="w-20 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                                            <div class="bg-amber-500 h-full rounded-full" style="width: 24%"></div>
+                                        </div>
+                                        <span class="text-amber-400">12 pcs</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-right font-medium">Rp 890.000</td>
+                                <td class="py-3 px-4 text-center">
+                                    <span class="px-2 py-0.5 rounded bg-amber-950/60 text-amber-400 border border-amber-800 text-[10px]">REORDER TRIGGER</span>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40 transition-colors">
+                                <td class="py-3 px-4 text-brand-400 font-semibold">SKU-5529-BRG</td>
+                                <td class="py-3 px-4 font-sans font-medium text-white">SKF Deep Groove High-Temp Bearing 6205</td>
+                                <td class="py-3 px-4 text-slate-400">RACK-C2 // BIN-04</td>
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <div class="w-20 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                                            <div class="bg-cyan-500 h-full rounded-full" style="width: 95%"></div>
+                                        </div>
+                                        <span class="text-cyan-400">420 pcs</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-right font-medium">Rp 175.000</td>
+                                <td class="py-3 px-4 text-center">
+                                    <span class="px-2 py-0.5 rounded bg-cyan-950/60 text-cyan-400 border border-cyan-800 text-[10px]">INBOUND +80</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Footer Command Prompt -->
+                <div class="bg-slate-950/80 px-4 py-2.5 border-t border-slate-800 flex items-center justify-between text-[11px] font-mono text-slate-400">
+                    <div class="flex items-center gap-2">
+                        <span class="text-emerald-400">➜</span>
+                        <span>daemon --sync-interval=5s --cluster=node-alpha</span>
+                    </div>
+                    <span class="text-slate-500">Press / to search inventory</span>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- Features Section -->
-    <section id="features" class="section bg-light">
-        <div class="container">
-            <div class="text-center mb-5">
-                <h2>Why Choose Nexventory?</h2>
-                <p class="lead">Powerful features to streamline your inventory management</p>
+    <!-- Section 2: Core Capabilities -->
+    <section id="capabilities" class="py-20 bg-slate-900/50 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-16">
+                <span class="text-xs font-mono font-semibold uppercase tracking-widest text-brand-400 bg-brand-500/10 px-3 py-1 rounded border border-brand-500/20">ENGINEERED FOR WAREHOUSE TEAMS</span>
+                <h2 class="text-3xl font-bold tracking-tight text-white mt-4">Every Movement Accounted For. Zero Guesswork.</h2>
+                <p class="text-slate-400 mt-3 text-base">Industrial-grade inventory tracking built from the ground up for warehouse managers, technicians, and procurement teams.</p>
             </div>
-            <div class="row g-4">
-                <div class="col-md-4 text-center">
-                    <div class="feature-icon">
-                        <i class="fas fa-tachometer-alt"></i>
-                    </div>
-                    <h4>Real-time Tracking</h4>
-                    <p>Monitor your inventory in real-time with our intuitive dashboard.</p>
-                </div>
-                <div class="col-md-4 text-center">
-                    <div class="feature-icon">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <h4>Analytics</h4>
-                    <p>Get valuable insights with our comprehensive analytics tools.</p>
-                </div>
-                <div class="col-md-4 text-center">
-                    <div class="feature-icon">
-                        <i class="fas fa-mobile-alt"></i>
-                    </div>
-                    <h4>Mobile Friendly</h4>
-                    <p>Access your inventory from anywhere, on any device.</p>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- About Section -->
-    <section id="about" class="section">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-6">
-                    <h2>About Us</h2>
-                    <p class="lead">Your Trusted Inventory Management Partner</p>
-                    <p>At Nexventory, we understand the challenges of managing inventory efficiently. Our mission is to provide businesses of all sizes with powerful yet easy-to-use tools to streamline their inventory management processes.</p>
-                    <p>With years of experience in the industry, our team is dedicated to delivering innovative solutions that help you save time, reduce costs, and grow your business.</p>
-                </div>
-                <div class="col-lg-6">
-                    <img src="https://via.placeholder.com/600x400" alt="About Nexventory" class="img-fluid rounded">
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Contact Section -->
-    <section id="contact" class="section bg-light">
-        <div class="container">
-            <div class="text-center mb-5">
-                <h2>Contact Us</h2>
-                <p class="lead">We'd love to hear from you</p>
-            </div>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="contact-info mb-4">
-                        <h4>Get in Touch</h4>
-                        <p><i class="fas fa-map-marker-alt"></i>Jl. Traktor 4 no 38</p>
-                        <p><i class="fas fa-phone"></i> +62 895 3005 3051</p>
-                        <p><i class="fas fa-envelope"></i> hubungi@nexventory.com</p>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <form>
-                        <div class="mb-3">
-                            <input type="text" class="form-control" placeholder="Your Name" required>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Card 1 -->
+                <div class="p-6 rounded-xl bg-slate-900 border border-slate-800 hover:border-brand-500/50 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="w-10 h-10 rounded-lg bg-brand-500/10 text-brand-400 border border-brand-500/20 flex items-center justify-center mb-5">
+                            <i class="fas fa-barcode text-lg"></i>
                         </div>
-                        <div class="mb-3">
-                            <input type="email" class="form-control" placeholder="Your Email" required>
+                        <h3 class="text-lg font-semibold text-white">Hierarchical SKU Taxonomy</h3>
+                        <p class="text-sm text-slate-400 mt-2 leading-relaxed">
+                            Organize inventory with custom SKU formats, categories, minimum thresholds, and location coordinates.
+                        </p>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-800/80 font-mono text-xs text-slate-500">
+                        FORMAT: [CAT]-[DEPT]-[ID]
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="p-6 rounded-xl bg-slate-900 border border-slate-800 hover:border-brand-500/50 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center mb-5">
+                            <i class="fas fa-clock-rotate-left text-lg"></i>
                         </div>
-                        <div class="mb-3">
-                            <textarea class="form-control" rows="4" placeholder="Your Message" required></textarea>
+                        <h3 class="text-lg font-semibold text-white">Immutable Audit Ledger</h3>
+                        <p class="text-sm text-slate-400 mt-2 leading-relaxed">
+                            Every stock addition, sales deduction, and return is permanently recorded with user identifiers and timestamps.
+                        </p>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-800/80 font-mono text-xs text-slate-500">
+                        AUDIT: 100% TRACEABLE
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="p-6 rounded-xl bg-slate-900 border border-slate-800 hover:border-brand-500/50 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center mb-5">
+                            <i class="fas fa-triangle-exclamation text-lg"></i>
                         </div>
-                        <button type="submit" class="btn btn-primary">Send Message</button>
-                    </form>
+                        <h3 class="text-lg font-semibold text-white">Proactive Stock Depletion Alerts</h3>
+                        <p class="text-sm text-slate-400 mt-2 leading-relaxed">
+                            Automatic alerts notify purchasing teams when SKU volume hits safety buffer thresholds before stockouts occur.
+                        </p>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-800/80 font-mono text-xs text-slate-500">
+                        BUFFER: DYNAMIC THRESHOLD
+                    </div>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="p-6 rounded-xl bg-slate-900 border border-slate-800 hover:border-brand-500/50 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="w-10 h-10 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center mb-5">
+                            <i class="fas fa-shield-halved text-lg"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white">Role-Based Command Controls</h3>
+                        <p class="text-sm text-slate-400 mt-2 leading-relaxed">
+                            Separate administration oversight from floor operator workflows to protect pricing, margins, and user management.
+                        </p>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-800/80 font-mono text-xs text-slate-500">
+                        SECURITY: RBAC ENFORCED
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="bg-dark text-white py-4">
-        <div class="container text-center">
-            <p class="mb-0">&copy; 2025 Nexventory. udah aku claim kalain jangan hitamkan</p>
+    <!-- Section 3: Logistics Pipeline -->
+    <section id="pipeline" class="py-20 bg-slate-950 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col lg:flex-row items-center gap-12">
+                <div class="lg:w-1/2">
+                    <span class="text-xs font-mono font-semibold uppercase tracking-widest text-brand-400 bg-brand-500/10 px-3 py-1 rounded border border-brand-500/20">OPERATIONAL WORKFLOW</span>
+                    <h2 class="text-3xl font-bold tracking-tight text-white mt-4">From Inbound Receiving to POS Fulfillment</h2>
+                    <p class="text-slate-400 mt-4 leading-relaxed">
+                        Nexventory unifies the entire supply lifecycle into a singular, high-throughput loop designed to eliminate data silos.
+                    </p>
+
+                    <div class="mt-8 space-y-4 font-mono text-xs">
+                        <div class="flex items-start gap-4 p-3.5 rounded-lg bg-slate-900 border border-slate-800">
+                            <span class="px-2 py-1 rounded bg-brand-500/20 text-brand-400 font-bold">01</span>
+                            <div>
+                                <h4 class="font-sans font-semibold text-sm text-white">Asset Registration & Ingestion</h4>
+                                <p class="text-slate-400 text-xs mt-0.5 font-sans">Quickly register new products with SKU codes, initial quantities, and base pricing.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-4 p-3.5 rounded-lg bg-slate-900 border border-slate-800">
+                            <span class="px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 font-bold">02</span>
+                            <div>
+                                <h4 class="font-sans font-semibold text-sm text-white">Live Point-of-Sale / Dispatch</h4>
+                                <p class="text-slate-400 text-xs mt-0.5 font-sans">Floor operators create customer sales receipts with automatic inventory decrementing.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-4 p-3.5 rounded-lg bg-slate-900 border border-slate-800">
+                            <span class="px-2 py-1 rounded bg-cyan-500/20 text-cyan-400 font-bold">03</span>
+                            <div>
+                                <h4 class="font-sans font-semibold text-sm text-white">Real-Time Analytical Aggregation</h4>
+                                <p class="text-slate-400 text-xs mt-0.5 font-sans">Executive dashboards display sales trends, revenue velocity, and depot health.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:w-1/2 w-full">
+                    <div class="p-6 rounded-xl bg-slate-900 border border-slate-800 shadow-xl">
+                        <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                            <span class="font-mono text-xs text-slate-300 flex items-center gap-2">
+                                <i class="fas fa-server text-brand-500"></i> SYSTEM ARCHITECTURE SPEC
+                            </span>
+                            <span class="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800">READY</span>
+                        </div>
+                        <div class="mt-4 space-y-3 font-mono text-xs text-slate-300">
+                            <div class="flex justify-between py-2 border-b border-slate-800/60">
+                                <span class="text-slate-500">Application Core</span>
+                                <span class="text-white font-medium">Python 3.12 / Flask Application Factory</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-slate-800/60">
+                                <span class="text-slate-500">Persistence Engine</span>
+                                <span class="text-white font-medium">SQLAlchemy ORM + Alembic Migrations</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-slate-800/60">
+                                <span class="text-slate-500">Auth Engine</span>
+                                <span class="text-white font-medium">Session RBAC + Scrypt/PBKDF2 Hashes</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-slate-800/60">
+                                <span class="text-slate-500">Styling Framework</span>
+                                <span class="text-white font-medium">Tailwind CSS + Precision Industrial Tokens</span>
+                            </div>
+                            <div class="flex justify-between py-2">
+                                <span class="text-slate-500">Mean Dispatch Latency</span>
+                                <span class="text-emerald-400 font-medium">&lt; 20ms Execution</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 4: Ready to deploy CTA -->
+    <section class="py-16 bg-gradient-to-b from-slate-950 to-slate-900 border-b border-slate-800 text-center">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6">
+            <h2 class="text-3xl font-bold text-white tracking-tight">Deploy Nexventory for Your Distribution Node</h2>
+            <p class="text-slate-400 mt-3 text-base">Get instant visibility over warehouse assets, transactions, and user access levels in minutes.</p>
+            <div class="mt-8 flex justify-center gap-4">
+                <a href="{{ url_for('auth.register') }}" class="px-8 py-3.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm transition-all shadow-xl shadow-brand-500/20 flex items-center gap-2">
+                    <i class="fas fa-boxes-stacked"></i>
+                    <span>Initialize Your Account</span>
+                </a>
+                <a href="{{ url_for('auth.login') }}" class="px-8 py-3.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 font-medium text-sm border border-slate-700 transition-all">
+                    Sign In to Existing Node
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Technical Footer -->
+    <footer class="py-10 bg-slate-950 text-slate-400 text-xs font-mono">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-6 h-6 rounded bg-brand-500 flex items-center justify-center text-white text-[10px]">
+                    <i class="fas fa-cube"></i>
+                </div>
+                <span class="text-slate-200 font-bold">NEXVENTORY SYSTEMS</span>
+                <span class="text-slate-600">|</span>
+                <span>PRECISION INDUSTRIAL INVENTORY</span>
+            </div>
+
+            <div class="flex items-center gap-4 text-slate-500">
+                <span class="flex items-center gap-1.5 text-emerald-400">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> ALL SYSTEMS ONLINE
+                </span>
+                <span>&copy; 2026 Nexventory. MIT License.</span>
+            </div>
         </div>
     </footer>
 
-    <!-- Bootstrap JS and dependencies -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Custom JavaScript for Hero Carousel -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize carousel
-            const heroCarousel = new bootstrap.Carousel(document.getElementById('heroCarousel'), {
-                interval: 3000,  // Change slide every 3 seconds
-                ride: 'carousel',
-                pause: 'hover',  // Pause on hover
-                wrap: true,      // Loop back to first slide
-                keyboard: true   // Allow keyboard navigation
-            });
-            
-            // Optional: Add smooth scrolling for anchor links
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-                anchor.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    const target = document.querySelector(this.getAttribute('href'));
-                    if (target) {
-                        target.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
-                    }
-                });
-            });
-        });
-    </script>
 </body>
-
 </html>

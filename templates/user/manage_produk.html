@@ -1,369 +1,317 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kelola Produk - Nexventory</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body>
-    <!-- Sidebar Navigation -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <h2><i class="fas fa-box"></i> Nexventory</h2>
-            <p class="user-name">{{ current_user.username }}</p>
+{% extends 'base.html' %}
+
+{% block title %}Product Catalog - Nexventory{% endblock %}
+{% block page_title %}Warehouse SKU Catalog{% endblock %}
+{% block page_subtitle %}Centralized SKU registry, asset threshold configuration, and stock management.{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-2.5">
+    <button onclick="exportCSV()" class="px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 font-mono text-xs border border-slate-700 transition-colors flex items-center gap-2">
+        <i class="fa-solid fa-file-csv text-xs text-brand-400"></i>
+        <span>Export CSV</span>
+    </button>
+    <button onclick="openAddModal()" class="px-3.5 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold text-xs shadow-md shadow-brand-500/20 transition-all flex items-center gap-2">
+        <i class="fa-solid fa-plus text-xs"></i>
+        <span>Register New SKU</span>
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Search & Filter Controls -->
+<div class="p-4 rounded-xl bg-slate-900 border border-slate-800 shadow-sm mb-6">
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <!-- Search Field -->
+        <div class="relative flex-1">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                <i class="fa-solid fa-magnifying-glass text-xs"></i>
+            </div>
+            <input type="text" id="productSearch" onkeyup="filterProducts()" 
+                   class="w-full pl-9 pr-4 py-2 bg-slate-950/80 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 font-mono transition-colors" 
+                   placeholder="Filter by SKU code, product name, or category...">
         </div>
-        
-        <nav class="sidebar-nav">
-            <a href="{{ url_for('user.dashboard') }}" class="nav-item">
-                <i class="fas fa-tachometer-alt"></i> Dashboard
-            </a>
-            <a href="{{ url_for('user.manage_produk') }}" class="nav-item active">
-                <i class="fas fa-boxes"></i> Kelola Produk
-            </a>
-            <a href="{{ url_for('user.manage_jualan') }}" class="nav-item">
-                <i class="fas fa-shopping-cart"></i> Kelola Pembelian
-            </a>
-            <a href="{{ url_for('user.tambah_jualan') }}" class="nav-item">
-                <i class="fas fa-plus-circle"></i> Tambah Pembelian
-            </a>
-            <a href="{{ url_for('user.transaction') }}" class="nav-item">
-                <i class="fas fa-receipt"></i> Riwayat Transaksi
-            </a>
-            <a href="{{ url_for('user.manage_akun') }}" class="nav-item">
-                <i class="fas fa-user-cog"></i> Kelola Akun
-            </a>
-        </nav>
-        
-        <div class="sidebar-footer">
-            <a href="{{ url_for('auth.logout') }}" class="logout-btn">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
+
+        <!-- Category Dropdown -->
+        <div class="w-full sm:w-48">
+            <select id="categoryFilter" onchange="filterProducts()" 
+                    class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-brand-500 font-mono transition-colors">
+                <option value="">All Categories</option>
+                <option value="electronics">Electronics / Komponen</option>
+                <option value="machinery">Machinery / Suku Cadang</option>
+                <option value="raw">Raw Materials</option>
+                <option value="elektronik">Elektronik</option>
+                <option value="pakaian">Pakaian</option>
+                <option value="makanan">Makanan</option>
+                <option value="minuman">Minuman</option>
+                <option value="lainnya">Lainnya</option>
+            </select>
+        </div>
+
+        <!-- Stock Level Dropdown -->
+        <div class="w-full sm:w-44">
+            <select id="stockFilter" onchange="filterProducts()" 
+                    class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-brand-500 font-mono transition-colors">
+                <option value="">All Stock Levels</option>
+                <option value="low">Low Stock (Alert)</option>
+                <option value="optimal">Optimal (&gt; 10)</option>
+                <option value="empty">Out of Stock (0)</option>
+            </select>
         </div>
     </div>
+</div>
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <header class="top-header">
-            <h1>Kelola Produk</h1>
-            <div class="header-actions">
-                <button class="btn-primary" onclick="showAddProductModal()">
-                    <i class="fas fa-plus"></i> Tambah Produk
-                </button>
-            </div>
-        </header>
-
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        <i class="fas fa-{{ 'info-circle' if category == 'info' else 'exclamation-triangle' if category == 'error' else 'check-circle' }}"></i>
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <!-- Search and Filter -->
-        <div class="search-filter">
-            <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" placeholder="Cari produk..." onkeyup="filterProducts()">
-            </div>
-            <div class="filter-box">
-                <select id="categoryFilter" onchange="filterProducts()">
-                    <option value="">Semua Kategori</option>
-                    <option value="elektronik">Elektronik</option>
-                    <option value="pakaian">Pakaian</option>
-                    <option value="makanan">Makanan</option>
-                    <option value="minuman">Minuman</option>
-                    <option value="lainnya">Lainnya</option>
-                </select>
-            </div>
-            <div class="filter-box">
-                <select id="stockFilter" onchange="filterProducts()">
-                    <option value="">Semua Stok</option>
-                    <option value="low">Stok Menipis</option>
-                    <option value="out">Habis</option>
-                    <option value="available">Tersedia</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- Products Table -->
-        <div class="table-container">
-            <table class="products-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nama Produk</th>
-                        <th>Kategori</th>
-                        <th>Stok</th>
-                        <th>Stok Minimum</th>
-                        <th>Harga</th>
-                        <th>Status</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody id="productsTableBody">
-                    {% if products %}
-                        {% for product in products %}
-                        <tr class="product-row" data-category="{{ product.category }}" data-stock="{{ product.stock }}" data-min-stock="{{ product.min_stock }}">
-                            <td>{{ product.id }}</td>
-                            <td>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    {% if product.image %}
-                                        <img src="{{ url_for('static', filename='uploads/' + product.image) }}" alt="{{ product.name }}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
-                                    {% else %}
-                                        <div style="width: 40px; height: 40px; background: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #999;">No Img</div>
-                                    {% endif %}
-                                    {{ product.name }}
+<!-- Product SKU Data Table -->
+<div class="rounded-xl bg-slate-900 border border-slate-800 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs font-mono" id="productsTable">
+            <thead class="bg-slate-950/80 text-slate-400 border-b border-slate-800 uppercase text-[10px]">
+                <tr>
+                    <th class="py-3 px-4 w-16">ID</th>
+                    <th class="py-3 px-4">Asset & SKU Information</th>
+                    <th class="py-3 px-4">Category</th>
+                    <th class="py-3 px-4 text-right">Unit Price</th>
+                    <th class="py-3 px-4 text-center">Stock Volume</th>
+                    <th class="py-3 px-4 text-right w-24">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60 text-slate-300">
+                {% if products %}
+                    {% for product in products %}
+                    <tr class="product-row hover:bg-slate-800/40 transition-colors" 
+                        data-name="{{ product.name|lower }}" 
+                        data-sku="{{ product.sku|lower }}" 
+                        data-category="{{ product.category|lower }}" 
+                        data-stock="{{ product.stock }}"
+                        data-minstock="{{ product.min_stock }}">
+                        <td class="py-3.5 px-4 text-slate-500">#{{ product.id }}</td>
+                        <td class="py-3.5 px-4">
+                            <div class="flex items-center gap-3">
+                                {% if product.image %}
+                                    <img src="{{ url_for('static', filename='uploads/' + product.image) }}" 
+                                         alt="{{ product.name }}" class="w-9 h-9 rounded object-cover border border-slate-700 flex-shrink-0">
+                                {% else %}
+                                    <div class="w-9 h-9 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500 flex-shrink-0">
+                                        <i class="fa-solid fa-box"></i>
+                                    </div>
+                                {% endif %}
+                                <div>
+                                    <div class="text-white font-sans font-semibold text-sm">{{ product.name }}</div>
+                                    <div class="text-brand-400 text-[11px] font-mono">{{ product.sku }}</div>
                                 </div>
-                            </td>
-                            <td>
-                                <span class="category-badge">{{ product.category }}</span>
-                            </td>
-                            <td>
-                                <span class="stock-count {% if product.stock <= product.min_stock %}low-stock{% endif %}">
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[11px] uppercase">
+                                {{ product.category }}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 text-right font-medium text-white">
+                            Rp {{ "{:,.0f}".format(product.price) }}
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <div class="flex items-center justify-center gap-2.5">
+                                <div class="w-20 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                                    {% set percentage = ((product.stock / (product.min_stock * 3 if product.min_stock > 0 else 50)) * 100)|round|int %}
+                                    <div class="h-full rounded-full {% if product.stock <= product.min_stock %}bg-amber-500{% else %}bg-emerald-500{% endif %}" 
+                                         style="width: {{ [percentage, 100]|min }}%"></div>
+                                </div>
+                                <span class="font-bold {% if product.stock <= product.min_stock %}text-amber-400{% else %}text-emerald-400{% endif %}">
                                     {{ product.stock }}
                                 </span>
-                            </td>
-                            <td>{{ product.min_stock }}</td>
-                            <td>Rp {{ "%.2f"|format(product.price) }}</td>
-                            <td>
-                                {% if product.stock == 0 %}
-                                    <span class="status-badge out-of-stock">Habis</span>
-                                {% elif product.stock <= product.min_stock %}
-                                    <span class="status-badge low-stock">Menipis</span>
-                                {% else %}
-                                    <span class="status-badge in-stock">Tersedia</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div class="action-buttons">
-                                    <button class="btn-edit" data-id="{{ product.id }}" onclick="editProduct(this.dataset.id)" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn-delete" data-id="{{ product.id }}" onclick="deleteProduct(this.dataset.id)" title="Hapus">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="8" class="no-data">
-                                <i class="fas fa-box-open"></i>
-                                <p>Belum ada produk</p>
-                                <button class="btn-primary" onclick="showAddProductModal()">
-                                    <i class="fas fa-plus"></i> Tambah Produk Pertama
+                                <span class="text-slate-500 text-[10px]">/ min {{ product.min_stock }}</span>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4 text-right">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <a href="{{ url_for('user.edit_product', product_id=product.id) }}" 
+                                   class="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 flex items-center justify-center transition-colors" title="Edit SKU">
+                                    <i class="fa-solid fa-pen-to-square text-[11px]"></i>
+                                </a>
+                                <button type="button" onclick="confirmDelete('{{ product.id }}', '{{ product.name|replace('\'', '\\\'') }}')" 
+                                        class="w-7 h-7 rounded bg-slate-800 hover:bg-rose-950/60 text-slate-400 hover:text-rose-400 border border-slate-700 hover:border-rose-800 flex items-center justify-center transition-colors" title="Decommission SKU">
+                                    <i class="fa-solid fa-trash-can text-[11px]"></i>
                                 </button>
-                            </td>
-                        </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="pagination">
-            <button class="page-btn" disabled>
-                <i class="fas fa-chevron-left"></i>
-            </button>
-            <span class="page-info">Menampilkan 1-10 dari {{ products|length }} produk</span>
-            <button class="page-btn" disabled>
-                <i class="fas fa-chevron-right"></i>
-            </button>
-        </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="py-12 text-center text-slate-500 font-mono">
+                            <i class="fa-solid fa-boxes-stacked text-3xl mb-3 opacity-40"></i>
+                            <p class="text-sm text-slate-400">No SKU items registered in catalog.</p>
+                            <button onclick="openAddModal()" class="mt-4 px-4 py-2 rounded bg-brand-500 hover:bg-brand-600 text-white font-semibold text-xs">
+                                Register First SKU
+                            </button>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
     </div>
+</div>
 
-    <!-- Add/Edit Product Modal -->
-    <div id="productModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="modalTitle">Tambah Produk</h3>
-                <button class="close-btn" onclick="closeProductModal()">
-                    <i class="fas fa-times"></i>
+<!-- Modal: Add New Product -->
+<div id="addProductModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-5">
+            <div>
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-boxes-stacked text-brand-500"></i> Register New SKU
+                </h3>
+                <p class="text-xs font-mono text-slate-400 mt-0.5">Add asset specification to active inventory pool.</p>
+            </div>
+            <button onclick="closeAddModal()" class="text-slate-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <form action="{{ url_for('user.add_product') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <div>
+                <label class="block text-xs font-mono text-slate-300 mb-1">Product / Asset Name *</label>
+                <input type="text" name="name" required placeholder="e.g. Siemens S7-1200 CPU Module"
+                       class="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-brand-500 font-sans">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-mono text-slate-300 mb-1">Category *</label>
+                    <select name="category" required class="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-brand-500 font-mono">
+                        <option value="Electronics">Electronics / Komponen</option>
+                        <option value="Machinery">Machinery / Suku Cadang</option>
+                        <option value="Raw Materials">Raw Materials</option>
+                        <option value="Pakaian">Pakaian / Wear</option>
+                        <option value="Makanan">Makanan / Food</option>
+                        <option value="Minuman">Minuman / Beverage</option>
+                        <option value="Lainnya">Lainnya / Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-mono text-slate-300 mb-1">Unit Price (IDR) *</label>
+                    <input type="number" name="price" required min="0" step="100" placeholder="150000"
+                           class="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-brand-500 font-mono">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-mono text-slate-300 mb-1">Initial Stock *</label>
+                    <input type="number" name="stock" required min="0" placeholder="50"
+                           class="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-brand-500 font-mono">
+                </div>
+                <div>
+                    <label class="block text-xs font-mono text-slate-300 mb-1">Min. Alert Stock *</label>
+                    <input type="number" name="min_stock" required min="0" placeholder="10"
+                           class="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-brand-500 font-mono">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-mono text-slate-300 mb-1">Product Asset Image (Optional)</label>
+                <input type="file" name="image" accept="image/*"
+                       class="w-full text-xs text-slate-400 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-mono file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700">
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button type="button" onclick="closeAddModal()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono">
+                    Cancel
+                </button>
+                <button type="submit" class="px-5 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold text-xs shadow-md shadow-brand-500/20">
+                    Register SKU
                 </button>
             </div>
-            <form id="productForm" method="POST" action="{{ url_for('user.add_product') }}" enctype="multipart/form-data">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="productName">Nama Produk *</label>
-                        <input type="text" id="productName" name="name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="productCategory">Kategori *</label>
-                        <select id="productCategory" name="category" required>
-                            <option value="">Pilih Kategori</option>
-                            <option value="elektronik">Elektronik</option>
-                            <option value="pakaian">Pakaian</option>
-                            <option value="makanan">Makanan</option>
-                            <option value="minuman">Minuman</option>
-                            <option value="lainnya">Lainnya</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="productStock">Stok *</label>
-                        <input type="number" id="productStock" name="stock" min="0" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="productMinStock">Stok Minimum *</label>
-                        <input type="number" id="productMinStock" name="min_stock" min="0" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="productPrice">Harga *</label>
-                        <input type="number" id="productPrice" name="price" min="0" step="0.01" required>
-                    </div>
-                    <div class="form-group full-width">
-                        <label for="productImage">Gambar Produk</label>
-                        <input type="file" id="productImage" name="image" accept="image/*">
-                        <small class="form-hint">Format: JPG, PNG, GIF. Maksimal 2MB</small>
-                    </div>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn-secondary" onclick="closeProductModal()">Batal</button>
-                    <button type="submit" class="btn-primary">Simpan</button>
-                </div>
-            </form>
-        </div>
+        </form>
     </div>
+</div>
 
-    <style>
-        /* Form styling for image upload */
-        .form-group.full-width {
-            grid-column: 1 / -1;
-        }
+<!-- Modal: Delete Confirmation -->
+<div id="deleteModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl text-center">
+        <div class="w-12 h-12 rounded-full bg-rose-950 border border-rose-800 text-rose-400 flex items-center justify-center mx-auto mb-4 text-lg">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h3 class="text-lg font-bold text-white">Decommission SKU</h3>
+        <p class="text-xs font-mono text-slate-400 mt-2">
+            Are you sure you want to remove <span id="deleteProductName" class="text-white font-bold"></span> from active registry?
+        </p>
+
+        <form id="deleteForm" method="POST" action="" class="mt-6 flex items-center justify-center gap-3">
+            <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono">
+                Cancel
+            </button>
+            <button type="submit" class="px-5 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs shadow-md shadow-rose-600/20">
+                Confirm Decommission
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterProducts() {
+    const search = document.getElementById('productSearch').value.toLowerCase();
+    const category = document.getElementById('categoryFilter').value.toLowerCase();
+    const stockFilter = document.getElementById('stockFilter').value;
+    const rows = document.querySelectorAll('.product-row');
+    
+    rows.forEach(row => {
+        const name = row.dataset.name;
+        const sku = row.dataset.sku;
+        const rowCategory = row.dataset.category;
+        const stock = parseInt(row.dataset.stock) || 0;
+        const minStock = parseInt(row.dataset.minstock) || 0;
         
-        .form-group input[type="file"] {
-            border: 2px dashed #e2e8f0;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: #f7fafc;
-        }
+        const matchesSearch = name.includes(search) || sku.includes(search);
+        const matchesCategory = category === "" || rowCategory.includes(category);
         
-        .form-group input[type="file"]:hover {
-            border-color: #667eea;
-            background: #edf2f7;
-        }
+        let matchesStock = true;
+        if (stockFilter === 'low') matchesStock = stock <= minStock && stock > 0;
+        else if (stockFilter === 'optimal') matchesStock = stock > minStock;
+        else if (stockFilter === 'empty') matchesStock = stock === 0;
         
-        .form-hint {
-            display: block;
-            margin-top: 5px;
-            font-size: 12px;
-            color: #718096;
-            line-height: 1.4;
-        }
-        
-        .current-image {
-            margin-top: 10px;
-            text-align: center;
-        }
-        
-        .current-image img {
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
-            padding: 2px;
-        }
-        
-        /* Product image in table */
-        .product-row img {
-            transition: transform 0.2s ease;
-        }
-        
-        .product-row img:hover {
-            transform: scale(1.1);
-        }
-    </style>
+        row.style.display = (matchesSearch && matchesCategory && matchesStock) ? "" : "none";
+    });
+}
 
-    <script>
-        // Filter products
-        function filterProducts() {
-            const searchValue = document.getElementById('searchInput').value.toLowerCase();
-            const categoryValue = document.getElementById('categoryFilter').value;
-            const stockValue = document.getElementById('stockFilter').value;
-            const rows = document.querySelectorAll('.product-row');
+function openAddModal() {
+    document.getElementById('addProductModal').classList.remove('hidden');
+}
 
-            rows.forEach(row => {
-                const name = row.cells[1].textContent.toLowerCase();
-                const category = row.dataset.category;
-                const stock = parseInt(row.dataset.stock);
-                const minStock = parseInt(row.dataset.min_stock);
+function closeAddModal() {
+    document.getElementById('addProductModal').classList.add('hidden');
+}
 
-                let showRow = true;
+function confirmDelete(productId, productName) {
+    document.getElementById('deleteProductName').innerText = productName;
+    document.getElementById('deleteForm').action = "/user/manage_produk/delete/" + productId;
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
 
-                // Search filter
-                if (searchValue && !name.includes(searchValue)) {
-                    showRow = false;
-                }
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+}
 
-                // Category filter
-                if (categoryValue && category !== categoryValue) {
-                    showRow = false;
-                }
-
-                // Stock filter
-                if (stockValue) {
-                    if (stockValue === 'low' && stock > minStock) showRow = false;
-                    if (stockValue === 'out' && stock > 0) showRow = false;
-                    if (stockValue === 'available' && stock === 0) showRow = false;
-                }
-
-                row.style.display = showRow ? '' : 'none';
-            });
-        }
-
-        // Modal functions
-        function showAddProductModal() {
-            document.getElementById('modalTitle').textContent = 'Tambah Produk';
-            document.getElementById('productForm').reset();
-            document.getElementById('productModal').style.display = 'block';
-        }
-
-        function closeProductModal() {
-            document.getElementById('productModal').style.display = 'none';
-        }
-
-        function editProduct(id) {
-            window.location.href = `/user/manage_produk/edit/${id}`;
-        }
-
-        function deleteProduct(id) {
-            if (confirm('Apakah Anda yakin ingin menghapus produk ini?')) {
-                // Create form for DELETE request
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `/user/manage_produk/delete/${id}`;
-                
-                // Add CSRF token if exists
-                const csrfToken = document.querySelector('meta[name="csrf-token"]');
-                if (csrfToken) {
-                    const csrfInput = document.createElement('input');
-                    csrfInput.type = 'hidden';
-                    csrfInput.name = 'csrf_token';
-                    csrfInput.value = csrfToken.getAttribute('content');
-                    form.appendChild(csrfInput);
-                }
-                
-                document.body.appendChild(form);
-                form.submit();
+function exportCSV() {
+    const rows = document.querySelectorAll('#productsTable tr');
+    let csv = [];
+    rows.forEach(row => {
+        const cols = row.querySelectorAll('th, td');
+        let rowData = [];
+        cols.forEach((col, idx) => {
+            if (idx < cols.length - 1) { // skip action buttons
+                rowData.push('"' + col.innerText.replace(/"/g, '""').replace(/\n/g, ' ') + '"');
             }
-        }
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('productModal');
-            if (event.target === modal) {
-                closeProductModal();
-            }
-        }
-    </script>
-</body>
-</html>
+        });
+        if (rowData.length > 0) csv.push(rowData.join(','));
+    });
+    
+    const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', 'nexventory_sku_catalog.csv');
+    a.click();
+}
+</script>
+{% endblock %}

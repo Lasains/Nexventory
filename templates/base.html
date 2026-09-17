@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Nexventory - Industrial Command{% endblock %}</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fff7ed',
+                            100: '#ffedd5',
+                            400: '#fb923c',
+                            500: '#f97316',
+                            600: '#ea580c',
+                            700: '#c2410c',
+                        },
+                        slate: {
+                            850: '#111827',
+                            900: '#0f172a',
+                            950: '#080c14',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Base Styling -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen selection:bg-brand-500 selection:text-white">
+    <div class="flex min-h-screen">
+        <!-- Unified Sidebar -->
+        {% include 'components/sidebar.html' %}
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col md:pl-64 min-w-0">
+            <!-- Global Top-Bar / Header -->
+            <header class="sticky top-0 z-30 h-16 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span class="text-xs font-mono text-slate-400 uppercase tracking-wider">
+                            NODE: <strong class="text-slate-200">WH-JKT-01</strong>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    {% block header_actions %}{% endblock %}
+                </div>
+            </header>
+
+            <!-- Page Body -->
+            <main class="flex-1 p-4 sm:p-6 lg:p-8">
+                <!-- Page Title Area -->
+                <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-800 pb-4">
+                    <div>
+                        <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                            {% block page_title %}{% endblock %}
+                        </h1>
+                        <p class="text-sm text-slate-400 mt-1 leading-relaxed">
+                            {% block page_subtitle %}{% endblock %}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Flash Messages → Toast Notifications (hidden data layer) -->
+                <div id="toast-data" class="hidden" aria-hidden="true">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <span data-category="{{ category }}" data-message="{{ message }}"></span>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                </div>
+
+                <!-- Main Content Slot -->
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <!-- Global Toast Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 w-80 max-w-[calc(100vw-3rem)] pointer-events-none"></div>
+
+    {% block scripts %}{% endblock %}
+
+    <!-- Toast Notification System -->
+    <script>
+    (function() {
+        const ICONS = {
+            success: '<i class="fa-solid fa-circle-check text-emerald-400"></i>',
+            error:   '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i>',
+            danger:  '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i>',
+            warning: '<i class="fa-solid fa-circle-exclamation text-amber-400"></i>',
+            info:    '<i class="fa-solid fa-circle-info text-sky-400"></i>',
+        };
+        const BORDERS = {
+            success: 'border-l-2 border-emerald-500',
+            error:   'border-l-2 border-rose-500',
+            danger:  'border-l-2 border-rose-500',
+            warning: 'border-l-2 border-amber-500',
+            info:    'border-l-2 border-sky-500',
+        };
+
+        function createToast(category, message) {
+            const cat = category || 'info';
+            const icon = ICONS[cat] || ICONS.info;
+            const border = BORDERS[cat] || BORDERS.info;
+
+            const toast = document.createElement('div');
+            toast.className = `
+                pointer-events-auto flex items-start gap-3 p-3.5 rounded-lg
+                bg-slate-900/95 backdrop-blur-sm ${border} shadow-2xl
+                text-sm text-slate-200 font-sans
+                translate-y-2 opacity-0 transition-all duration-300 ease-out
+            `.replace(/\s+/g, ' ').trim();
+
+            toast.innerHTML = `
+                <span class="flex-shrink-0 mt-0.5">${icon}</span>
+                <span class="flex-1 leading-relaxed">${message}</span>
+                <button onclick="this.closest('[data-toast]').remove()" 
+                        class="flex-shrink-0 text-slate-500 hover:text-white transition-colors ml-1 mt-0.5">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            `;
+            toast.dataset.toast = '1';
+
+            const container = document.getElementById('toast-container');
+            container.appendChild(toast);
+
+            // Animate in
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    toast.classList.remove('translate-y-2', 'opacity-0');
+                });
+            });
+
+            // Auto-dismiss after 4.5s
+            const timer = setTimeout(() => dismissToast(toast), 4500);
+            toast.addEventListener('mouseenter', () => clearTimeout(timer));
+            toast.addEventListener('mouseleave', () => setTimeout(() => dismissToast(toast), 1500));
+        }
+
+        function dismissToast(toast) {
+            if (!toast.parentElement) return;
+            toast.classList.add('opacity-0', 'translate-y-1');
+            toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+        }
+
+        // Fire all flashed messages as toasts on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('toast-data');
+            if (!container) return;
+            container.querySelectorAll('[data-message]').forEach(function(el) {
+                createToast(el.dataset.category, el.dataset.message);
+            });
+        });
+
+        // Expose globally for manual use: window.showToast('success', 'Done!')
+        window.showToast = createToast;
+    })();
+    </script>
+</body>
+</html>

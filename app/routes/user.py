@@ -500,6 +500,9 @@ def dashboard():
         chart_sales_data.insert(0, sales_count)
         chart_revenue_data.insert(0, revenue)
     
+    # Recent transactions for current user
+    recent_transactions = Transaction.query.filter_by(user_id=current_user.id).order_by(Transaction.created_at.desc()).limit(6).all()
+    
     return render_template('user/dashboard.html',
                          total_products=total_products,
                          low_stock_products=low_stock_products,
@@ -512,7 +515,8 @@ def dashboard():
                          avg_transaction_value=avg_transaction_value,
                          chart_labels=chart_labels,
                          chart_sales_data=chart_sales_data,
-                         chart_revenue_data=chart_revenue_data)
+                         chart_revenue_data=chart_revenue_data,
+                         recent_transactions=recent_transactions)
 
 @user_bp.route('/manage_akun')
 @login_required
