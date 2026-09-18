@@ -1,39 +1,141 @@
-# Environment variables
-.env
-.flaskenv.local
+# ==============================================================================
+# NEXVENTORY - PRODUCTION & DEPLOYMENT .GITIGNORE
+# Mengabaikan semua file, folder, dan artefak yang tidak dibutuhkan saat deployment
+# ==============================================================================
 
-# Python Virtual Environments
+# ------------------------------------------------------------------------------
+# 1. Environment Variables, Secrets & Konfigurasi Lokal
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+.flaskenv.local
+*.env
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+
+# ------------------------------------------------------------------------------
+# 2. Virtual Environments & Pip Cache
+# ------------------------------------------------------------------------------
 .venv/
 venv/
 ENV/
 env/
+env.bak/
+venv.bak/
+.pip_cache/
+.cache/
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Python Cache & Bytecode
+# ------------------------------------------------------------------------------
+# 3. Python Cache, Bytecode & Build Artifacts
+# ------------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Flask instance & SQLite databases
+# ------------------------------------------------------------------------------
+# 4. Database & Storage Lokal (SQLite, Instance Flask)
+# ------------------------------------------------------------------------------
 instance/
 *.db
-*.sqlite3
+*.db-journal
+*.db-wal
 *.sqlite
+*.sqlite3
+*.sqlite3-journal
 
-# OS & Editor files
-.DS_Store
-.idea/
+# ------------------------------------------------------------------------------
+# 5. Media Dinamis & File Runtime (QRIS Dinamis, Uploads, Temp)
+# ------------------------------------------------------------------------------
+# Folder tetap dipertahankan lewat .gitkeep, tapi file dinamis diabaikan
+static/qris/*
+!static/qris/.gitkeep
+static/uploads/*
+!static/uploads/.gitkeep
+.tmp/
+tmp/
+temp/
+
+# ------------------------------------------------------------------------------
+# 6. Screenshot & Gambar Dokumentasi Pengujian (Root Directory)
+# ------------------------------------------------------------------------------
+/*_screenshot.png
+/*screenshot*.png
+/mobile_dashboard.png
+
+# ------------------------------------------------------------------------------
+# 7. Testing, Coverage & Browser Binaries (Development Only)
+# ------------------------------------------------------------------------------
+tests/
+.pytest_cache/
+.coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.browsers/
+test-results/
+playwright-report/
+
+# ------------------------------------------------------------------------------
+# 8. AI Agent / Assistant Files & Scratch Notes
+# ------------------------------------------------------------------------------
+.agents/
+.gemini/
+.github/
+skills-lock.json
+check_db.py
+app/models/Untitled-1.txt
+
+# ------------------------------------------------------------------------------
+# 9. Editor & Operating System Junk
+# ------------------------------------------------------------------------------
 .vscode/
+.idea/
 *.swp
 *.swo
+*~
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
 
-.github/
-
-*.json
-*md
-
-*.png
-
-tests/
-.agents/
+# ------------------------------------------------------------------------------
+# 10. Logs & Debug Output
+# ------------------------------------------------------------------------------
+*.log
+logs/
+*.pid
