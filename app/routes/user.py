@@ -269,6 +269,76 @@ def _save_order_transactions(
         db.session.rollback()
 
 
+def _settle_order_with_lock(order_id: str, final_status: str) -> None:
+    """
+    Atomically settle a paid Midtrans order and deduct stock.
+
+    Uses SELECT FOR UPDATE to lock product rows before modifying stock,
+    preventing two concurrent settlement callbacks from both deducting
+    the same stock (race condition). On SQLite (development) the
+    with_for_update() hint is silently ignored — SQLite is already
+    serialized at the file level, so no concurrency issue arises there.
+
+    The function is idempotent: transactions already in 'settlement' or
+    'capture' state are skipped, so duplicate Midtrans webhooks or
+    duplicate polling responses are harmless.
+    """
+    # Fetch unsettled transactions for this order in one query
+    txns = (
+        Transaction.query
+        .filter(
+            Transaction.midtrans_order_id == order_id,
+            Transaction.payment_status.notin_(['settlement', 'capture'])
+        )
+        .all()
+    )
+
+    if not txns:
+        # All transactions are already settled — nothing to do
+        return
+
+    # Collect unique product IDs involved in this order
+    product_ids = list({txn.product_id for txn in txns})
+
+    # Lock all affected product rows in a deterministic order (by ID) to
+    # prevent deadlocks when multiple orders involve overlapping products.
+    # with_for_update() becomes a no-op on SQLite.
+    locked_products = (
+        db.session.query(Product)
+        .filter(Product.id.in_(product_ids))
+        .order_by(Product.id)
+        .with_for_update()
+        .all()
+    )
+    product_map = {p.id: p for p in locked_products}
+
+    for txn in txns:
+        prod = product_map.get(txn.product_id)
+        txn.payment_status = final_status
+        txn.paid_at = datetime.utcnow()
+
+        if prod is None:
+            logger.error(
+                f"Product {txn.product_id} not found during settlement of order {order_id}"
+            )
+            continue
+
+        # Re-check stock *after* acquiring the lock (authoritative value)
+        if prod.stock >= txn.quantity:
+            prod.stock -= txn.quantity
+        else:
+            # Stock depleted by a concurrent settlement — log and skip deduction.
+            # The DB CheckConstraint 'ck_product_stock_non_negative' will catch
+            # any case where this guard is somehow bypassed.
+            logger.warning(
+                f"Insufficient stock for product {prod.id} ({prod.name}) during settlement "
+                f"of order {order_id}: available={prod.stock}, required={txn.quantity}. "
+                "Stock deduction skipped."
+            )
+
+    db.session.commit()
+
+
 @user_bp.route('/api/payment/status/<order_id>', methods=['GET'])
 @login_required
 def check_payment_status(order_id):
@@ -277,19 +347,15 @@ def check_payment_status(order_id):
         svc = MidtransService()
         result = svc.check_status(order_id)
 
-        # Synchronize local database
-        txns = Transaction.query.filter_by(midtrans_order_id=order_id).all()
         if result.get('is_paid'):
-            for txn in txns:
-                if txn.payment_status not in ('settlement', 'capture'):
-                    txn.payment_status = 'settlement'
-                    txn.paid_at = datetime.utcnow()
-                    if txn.product and txn.product.stock >= txn.quantity:
-                        txn.product.stock -= txn.quantity
-            db.session.commit()
+            _settle_order_with_lock(order_id, result.get('status', 'settlement'))
         elif result.get('status') in ('expire', 'cancel', 'failure', 'deny'):
-            for txn in txns:
-                txn.payment_status = result.get('status')
+            # Non-paid terminal states: just update status, no stock change
+            (
+                Transaction.query
+                .filter_by(midtrans_order_id=order_id)
+                .update({'payment_status': result.get('status')}, synchronize_session=False)
+            )
             db.session.commit()
 
         return jsonify({'success': True, **result})
@@ -320,6 +386,10 @@ def payment_callback():
     """
     Midtrans server-to-server notification webhook.
     Midtrans posts JSON here when payment status changes.
+
+    NOTE: Midtrans may send duplicate notifications for the same event.
+    _settle_order_with_lock is idempotent — already-settled transactions
+    are skipped, so duplicates are harmless.
     """
     try:
         notification = request.get_json(silent=True) or {}
@@ -338,19 +408,26 @@ def payment_callback():
             logger.warning(f"Invalid webhook signature for order {order_id}")
             return jsonify({'status': 'invalid signature'}), 403
 
-        logger.info(f"Midtrans webhook: order={order_id} status={transaction_status} payment={payment_type}")
+        logger.info(
+            f"Midtrans webhook: order={order_id} status={transaction_status} payment={payment_type}"
+        )
 
-        # Find transactions by midtrans_order_id
-        txns = Transaction.query.filter_by(midtrans_order_id=order_id).all()
-        for txn in txns:
-            txn.payment_status = transaction_status
-            if PaymentConfig.is_paid_status(transaction_status):
-                if fraud_status in ('accept', '') or not fraud_status:
-                    if not txn.paid_at:
-                        txn.paid_at = datetime.utcnow()
-                        if txn.product and txn.product.stock >= txn.quantity:
-                            txn.product.stock -= txn.quantity
-        db.session.commit()
+        is_paid = PaymentConfig.is_paid_status(transaction_status)
+        # For card payments, fraud_status must be 'accept'; QRIS/VA have no fraud_status.
+        if fraud_status and fraud_status != 'accept' and transaction_status == 'capture':
+            is_paid = False
+
+        if is_paid:
+            # Atomic stock deduction with row-level lock
+            _settle_order_with_lock(order_id, transaction_status)
+        else:
+            # Non-paid status update (expire, cancel, failure, deny, etc.)
+            (
+                Transaction.query
+                .filter_by(midtrans_order_id=order_id)
+                .update({'payment_status': transaction_status}, synchronize_session=False)
+            )
+            db.session.commit()
 
         return jsonify({'status': 'ok'}), 200
 
